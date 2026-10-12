@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1120" height="390" viewBox="0 0 1120 390" role="img" aria-labelledby="title desc">
-<title id="title">Measured and proposed agent inference serving architectures</title>
-<desc id="desc">At left a measured single-worker vLLM setup; at right a proposed Dynamo router with two separate vLLM workers, each with a 4.5 GiB GPU KV cache. Proposed system has no measured routing results yet.</desc>
+<title id="title">Measured single-worker and distributed inference architectures</title>
+<desc id="desc">At left the measured A40 single-worker vLLM experiment; at right the measured Dynamo routing experiment with two GPU workers, each reserving 4.5 GiB of KV memory. Different GPU hardware was used across experimental cohorts.</desc>
 <rect width="1120" height="390" rx="18" fill="#0b1220"/>
 <text x="38" y="42" font-family="Arial,Helvetica,sans-serif" font-size="24" font-weight="700" fill="#f1f5f9">Where does the next agent turn land?</text>
 <text x="38" y="65" font-family="Arial,Helvetica,sans-serif" font-size="14" fill="#94a3b8">KV retention within a worker  /  KV-aware placement across workers</text>
