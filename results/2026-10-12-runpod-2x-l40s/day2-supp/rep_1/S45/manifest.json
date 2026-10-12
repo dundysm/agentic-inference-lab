@@ -1,0 +1,29 @@
+{
+  "cohort": "supp",
+  "rep": 1,
+  "arm": "S45",
+  "model": "Qwen/Qwen3-4B-Instruct-2507",
+  "model_revision": "cdbee75f17c01a7cc42f958dc650907174af0554",
+  "kv_cache_memory_bytes_per_worker": 4831838208,
+  "block_size": 64,
+  "max_model_len": 8192,
+  "gpu_memory_utilization": 0.7,
+  "affinity_ttl_s": 300,
+  "sessions": 16,
+  "turns": 12,
+  "lines": 80,
+  "pause_s": 0.5,
+  "max_inflight": 4,
+  "stagger_s": 0.0,
+  "pause_max_s": 0.0,
+  "schedule_seed": "day2-sensitivity",
+  "workers": 1,
+  "kv_cache_memory_bytes_actual": 4831838208,
+  "gpu_baseline_mib": [
+    0,
+    0
+  ],
+  "vllm_use_flashinfer_sampler": "0",
+  "pythonhashseed": "0",
+  "completed": true
+}

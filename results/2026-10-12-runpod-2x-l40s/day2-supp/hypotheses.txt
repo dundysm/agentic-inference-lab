@@ -1,0 +1,11 @@
+cohort=supp runs=12 reps=[1, 2, 3] invalid=none
+
+Per rep (recomputed prefill vs R2 | resumed p95 ms | wall s | resumed mean cached):
+  rep 1: R2 1.00x | p95 48 | 21.8s | 0.982   R3H 1.00x | p95 51 | 22.2s | 0.982   S45 10.44x | p95 336 | 48.9s | 0.000   S9 1.00x | p95 49 | 24.7s | 0.982
+  rep 2: R2 1.00x | p95 51 | 21.8s | 0.982   R3H 1.00x | p95 50 | 21.9s | 0.982   S45 10.44x | p95 338 | 48.9s | 0.000   S9 1.00x | p95 49 | 24.7s | 0.982
+  rep 3: R2 1.00x | p95 47 | 21.7s | 0.982   R3H 1.00x | p95 50 | 22.0s | 0.982   S45 10.45x | p95 352 | 49.0s | 0.000   S9 1.00x | p95 49 | 24.7s | 0.982
+
+X-H1 median R3H/R2 prefill = 1.000 (needs within 0.9-1.1): SUPPORTED
+X-H2 S45 resumed mean cached per rep = [0.0, 0.0, 0.0] (needs <0.2 every rep): SUPPORTED
+X-H3 S9 resumed mean cached per rep = [0.982, 0.982, 0.982] (>0.9 every rep) and median S9/R2 prefill = 1.00 (<=1.2): SUPPORTED
+X-H4 R2 wall < S9 wall every rep [(21.8, 24.7), (21.8, 24.7), (21.7, 24.7)]: SUPPORTED

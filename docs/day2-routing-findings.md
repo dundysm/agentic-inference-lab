@@ -1,21 +1,33 @@
 # Day 2 findings: two-replica request placement (Dynamo 1.5.1)
 
-**Date:** 2026-10-12. **Status:** measured on two GPUs, with five pre-registered repetitions ([pre-registration](preregistration-day2-main-2026-10-12.md)). It is followed by one diagnostic run and two exploratory runs, which are not part of the cohort and are labelled as such.
+**Date:** 2026-10-12. **Status:** complete.
+- **Main cohort:** five pre-registered repetitions on two GPUs ([pre-registration](preregistration-day2-main-2026-10-12.md)).
+- **Diagnostic and exploratory runs:** one and two respectively, outside the cohort and labelled as such.
+- **Pre-registered follow-up cohorts:** sensitivity and supplementary ([pre-registration](preregistration-day2-followup-2026-10-12.md)); see [Follow-up cohorts](#follow-up-cohorts).
 
 ## Question
 On the **same two GPUs** with the **same 4.5 GiB KV pool per worker**, how much does the request router change prefix reuse, recomputation, latency and load balance for Day 1's 16-session agent-like workload?
 
 ## Answer
-**Placement decides almost everything. KV-aware routing with default weights did not deliver it.**
-- **Session affinity (R2 hard, R3 soft):**
-  - Recomputes **0.26–0.36×** the prefill tokens of round robin in every repetition.
-  - Cuts resumed p95 TTFT from about 280–310 ms to **46–50 ms**.
-  - Finishes about 15–20% sooner, with perfectly balanced workers.
-- **The KV-aware router (R1):** beat round robin on recompute in only **3 of 5** reps; median 0.88×, range 0.77–1.24×.
-- **Where the misses come from:** **every one of the 397 resumed cache misses** in the non-affinity arms happened on a turn where the session had moved to the other worker.
-- **Diagnosis, from debug router logs:**
-  - The router's KV index was accurate. It still moved sessions *away* from the worker it correctly believed held their prefix, because its default cost weighting priced momentary load on that worker above the reuse.
-  - Raising `--router-prefill-load-scale` from 1 to 4 made the KV router reproduce hard affinity token for token. This was one exploratory run.
+**Placement decides almost everything, and session affinity was the best placement in every regime tested.** The default-weighted KV-aware router recovered **none** of the locality on the synchronized workload and **about half** of it on a staggered, heavier one.
+
+- **Session affinity (hard or soft):**
+  - **Main cohort:** recomputes **0.26–0.36×** round robin's prefill and cuts resumed p95 TTFT from about 280–310 ms to **46–50 ms**, with perfectly balanced workers.
+  - **Sensitivity cohort** (staggered starts, variable pauses, 8 in flight): **0.17–0.22×**, still balanced.
+- **The KV-aware router at default weights (R1):**
+  - **Main cohort (synchronized):** indistinguishable from round robin. It beat round robin in only **3 of 5** reps; median 0.88×, range 0.77–1.24×.
+  - **Sensitivity cohort:** **0.51×** round robin, a real improvement but still about 2.4× affinity's recompute.
+  - The claim "no better than round robin" holds only for the synchronized pattern.
+- **Where the misses come from:**
+  - **Main cohort:** all **397/397** resumed cache misses in the non-affinity arms happened on a turn where the session had moved worker.
+  - **Sensitivity cohort:** **524/533** did. The other 9 were same-worker evictions under 8 in flight.
+- **Diagnosis, from debug router logs:** the router's KV index was accurate. It moved sessions away from the worker it correctly believed held their prefix, because its default weighting priced momentary load on that worker above the reuse.
+- **Raising `--router-prefill-load-scale` to 4:**
+  - Exploratory runs on the synchronized workload: reproduced hard affinity token for token, on both GPU types.
+  - Pre-registered sensitivity cohort: cut recompute from 0.51× to **0.26×** round robin, with p95 within 1.09× of affinity. It still recomputed **1.30×** affinity (S-H3 not supported).
+- **Capacity controls:**
+  - One worker with 4.5 GiB reproduces Day 1's total collapse on the Day 2 stack: 0.000 cached, 10.4× recompute.
+  - One worker with the pooled 9 GiB reuses exactly as well as two affinity-routed 4.5 GiB workers. The second GPU buys about 12% wall time.
 
 ## Setup
 - **Hardware:** RunPod on-demand pod, 2× NVIDIA RTX PRO 4500 Blackwell Server Edition (32 GB, same NUMA node), driver 580.178.04, CUDA 13.0.
@@ -129,27 +141,112 @@ The workers' own scheduler queue time supports this. `vllm:request_queue_time_se
 | 4 | **0** | **16/16** | **59,196** | 50 ms | 21.9 s |
 | *R2 hard affinity (pilot), for reference* | 0 | 16/16 | 59,196 | 48 ms | 21.8 s |
 
+## Follow-up cohorts
+Pre-registered in [preregistration-day2-followup-2026-10-12.md](preregistration-day2-followup-2026-10-12.md) before any follow-up run. Both cohorts ran on a **new pod with 2× NVIDIA L40S** (48 GB, driver 580.126.09, CUDA 13.0, no foreign GPU memory), because the RTX PRO 4500 pair was sold out. Everything else was identical:
+- the KV budget (4.5 GiB, 32,768 tokens per worker), model, Dynamo/vLLM build and prompts (digest `c9c7e42687f3`);
+- R0–R3 launch arguments, byte-identical to the main cohort.
+
+Results are compared **within each cohort only**. All 32 runs were valid: 192/192 requests, placement known for every request, and the expected digest. Raw data: [`results/2026-10-12-runpod-2x-l40s/`](../results/2026-10-12-runpod-2x-l40s/).
+
+**Smoke check** (one run each, outside the cohorts): on the L40S pair, R1S4 on the fixed workload again made 0 moves and recomputed exactly 59,196 tokens. So the exploratory "prefill-scale 4 matches affinity" result reproduces on a second GPU type.
+
+### Cohort S: sensitivity
+The workload was changed to:
+- staggered session starts (seeded 0–8 s);
+- seeded variable tool pauses (0.25–1.75 s, mean about 1 s);
+- **8** requests in flight.
+
+The schedule is identical across arms and reps, so comparisons are paired. 5 reps × 4 arms.
+
+| Arm (median across 5 reps) | Recomputed prefill | vs R0 | Resumed p95 | Resumed mean cached | Wall |
+|---|---:|---:|---:|---:|---:|
+| R0 round robin | 288k | 1.00× | 229 ms | 0.579 | 26.2 s |
+| R1 KV, default weights | 163k | **0.51×** | 187 ms | 0.797 | 25.1 s |
+| R1S4 KV, `--router-prefill-load-scale 4` | 77k | **0.26×** | 61 ms | 0.950 | 24.4 s |
+| R2 hard affinity | 59k | **0.21×** | 56 ms | 0.982 | 24.3 s |
+
+Full per-rep output is in [`hypotheses.txt`](../results/2026-10-12-runpod-2x-l40s/day2-sens/hypotheses.txt), and the paired Table A and validity Table B are in [`tables.md`](../results/2026-10-12-runpod-2x-l40s/day2-sens/analysis/tables.md).
+
+| | Claim | Result |
+|---|---|---|
+| S-H1 | Affinity recompute < 0.5× R0, every rep | **Supported** (0.17–0.22×) |
+| S-H2 | Default KV router still ≈ round robin (median R1/R0 ≥ 0.75) | **Not supported**: 0.51× |
+| S-H3 | Prefill-scale 4 within 1.2× of affinity on recompute | **Not supported**: 1.30× |
+| S-H4 | Prefill-scale 4 p95 within 1.2× of affinity | **Supported** (1.09×) |
+| S-H5 | ≥90% of misses on worker moves (R0, R1) | **Supported**: 524/533 (98.3%) |
+| S-H6 | Affinity balanced (40–60% per worker) | **Supported**: exactly 50% every rep |
+
+What this changes:
+- **The default KV router is workload-dependent, not useless.** When sessions are synchronized, every resumed turn arrives while its sibling sessions' prefills and decodes load the cache-holding worker, so the load term wins every time. With staggered arrivals, the cache-holding worker is more often lightly loaded at decision time, so overlap wins more often.
+- **The reweighting helps a lot but does not fully close the gap.** It still made 21 moves in rep 1 versus affinity's 0.
+- **Affinity is still best.** Under this schedule it was also never worse on tail latency or balance.
+- **Same-worker misses appear under load.** The 9 non-move misses are same-worker evictions that appear only at 8 in flight, which pushes more active blocks through each 32,768-token pool.
+
+![Sensitivity cohort: recomputed prefill per worker](../results/2026-10-12-runpod-2x-l40s/day2-sens/analysis/day2_prefill_per_worker.png)
+
+![Sensitivity cohort: session-to-worker placement, rep 1](../results/2026-10-12-runpod-2x-l40s/day2-sens/analysis/day2_session_placement.png)
+
+The other two sensitivity figures (reuse by turn, resumed TTFT) are in the same [`analysis/`](../results/2026-10-12-runpod-2x-l40s/day2-sens/analysis/) folder.
+
+### Cohort X: supplementary (fixed workload)
+Same timing as the main cohort. 3 reps × 4 arms.
+
+| Arm (median across 3 reps) | Workers × KV | Recomputed prefill vs R2 | Resumed mean cached | Resumed p95 | Wall |
+|---|---|---:|---:|---:|---:|
+| R2 hard affinity (round-robin base) | 2 × 4.5 GiB | 1.00× | 0.982 | 48 ms | 21.8 s |
+| R3H hard affinity (KV base; the guide's R3) | 2 × 4.5 GiB | 1.00× | 0.982 | 50 ms | 22.0 s |
+| S45 single worker | 1 × 4.5 GiB | **10.44×** | **0.000** | 338 ms | 48.9 s |
+| S9 single worker | 1 × 9 GiB | **1.00×** | 0.982 | 49 ms | 24.7 s |
+
+| | Claim | Result |
+|---|---|---|
+| X-H1 | The guide's R3 (KV + hard) ≈ R2 | **Supported** (1.000×) |
+| X-H2 | Day 1 collapse reproduces on the Day 2 stack | **Supported** (0.000 cached every rep) |
+| X-H3 | One 9 GiB worker fits the working set | **Supported** (0.982 cached; recompute = R2) |
+| X-H4 | Two GPUs finish sooner than one 9 GiB GPU | **Supported** (21.8 s vs 24.7 s every rep) |
+
+What this adds:
+- **The Day 1 cliff is a property of the KV budget versus the working set, not of vLLM 0.31 or the block size.**
+  - The cached fraction is exactly 0.000 here, where Day 1 had 0.005. With 64-token blocks, the short shared system prompt no longer fills a whole block.
+- **Two GPUs at 4.5 GiB with affinity reuse exactly as well as one GPU holding all 9 GiB.** Partitioning the sessions loses nothing; the second GPU buys about 12% wall time.
+- **Without affinity, two 4.5 GiB workers (main cohort R0/R1) do far worse than one 9 GiB worker.** The routing policy decides whether the memory is partitioned usefully.
+
 ## Predictions that were wrong
 - **R0 collapse.** I expected round robin to collapse to Day 1-style near-zero reuse. It did not: about two thirds of resumed turns still hit, because round robin scrambles the strict cyclic order that defeated LRU on Day 1. Its cost showed up as about 4× the recompute and about 6× the p95, not as a near-zero hit rate.
 - **R1 cause.** I attributed R1's moves to eviction or a stale index before the diagnostic run. Both were ruled out; the cause is the cost weighting.
+- **S-H2: R1 stays like round robin.** I expected the default KV router to stay like round robin under a varied schedule. It halved round robin's recompute.
+- **S-H3: the reweighting matches affinity.** I expected prefill-scale 4 to match affinity under the varied schedule, as it did in the synchronized exploratory runs. It recomputed 1.30× affinity.
 
 ## Limitations
-- **Scope:** one model, one workload pattern, one pod and host, and one Dynamo/vLLM build.
-  - The workload is synthetic and client-throttled at 4 in flight.
-  - Load is light enough that affinity never had to fight real imbalance. A heavier or skewed workload could reward the load term R1 is weighting.
-- **Exploratory evidence:** the prefill-load-scale results are single exploratory runs on this workload. They show the mechanism, not a recommended production setting.
-- **Host asymmetry:** GPU 1's foreign 5.7 GiB allocation is an unexplained asymmetry. Utilization during runs was similar on both GPUs, and per-worker results were symmetric.
-- **TTFT definition:** client TTFT is measured to the first streamed content and includes the Dynamo frontend. Compare only within Day 2.
-- **No rerun of Day 1:** there was no aligned single-worker rerun on this stack, so no one-GPU-vs-two-GPU claim is made.
+- **Scope:** one model, one prompt set and two timing patterns; one Dynamo/vLLM build; RunPod single-host pods.
+  - The workload is synthetic and client-throttled (4 or 8 in flight).
+  - It is still light enough that the workers' scheduler queues stayed near empty. A heavier or skewed workload could reward the load term that R1 weights.
+- **GPU types differ between cohorts.** The main and follow-up cohorts ran on different GPU types (RTX PRO 4500 vs L40S). No cross-cohort latency comparison is made.
+- **Exploratory evidence:** the prefill-load-scale 2/4 results on the synchronized workload are single exploratory runs. The sensitivity cohort is the pre-registered test of the reweighting.
+- **Host asymmetry (main cohort only):** GPU 1's foreign 5.7 GiB allocation on the main-cohort pod is an unexplained asymmetry. Per-worker results there were symmetric, and the L40S pod had none.
+- **TTFT definition:** client TTFT is measured to the first streamed content and includes the Dynamo frontend.
 
 ## Reproduce
-- **Launcher:** [`scripts/day2_cluster.sh`](../scripts/day2_cluster.sh) holds all worker and frontend flags.
-- **Cohort:** [`scripts/day2_run_matrix.sh`](../scripts/day2_run_matrix.sh) runs it, for example `COHORT=main REPS=5`.
+- **Launcher:** [`scripts/day2_cluster.sh`](../scripts/day2_cluster.sh) holds all worker and frontend flags for every arm, including R1S4, R3H, S45 and S9.
+- **Cohorts:** [`scripts/day2_run_matrix.sh`](../scripts/day2_run_matrix.sh) runs them, for example:
+  - `COHORT=main REPS=5`
+  - `COHORT=sens ARMS="R0 R1 R1S4 R2" REPS=5 STAGGER_S=8 PAUSE=0.25 PAUSE_MAX=1.75 MAX_INFLIGHT=8`
+  - `COHORT=supp ARMS="R2 R3H S45 S9" REPS=3`
+- **Environment:** [`env/runpod_day2_setup.sh`](../env/runpod_day2_setup.sh). It ran unmodified on the follow-up pod.
 - **Analysis:**
-  - [`scripts/day2_analyze.py`](../scripts/day2_analyze.py) and [`scripts/day2_evaluate.py`](../scripts/day2_evaluate.py) analyse and evaluate the cohort; [`scripts/day2_plots.py`](../scripts/day2_plots.py) regenerates the figures and Tables A/B.
-  - The diagnosis needs a run with `DYN_LOG=info,dynamo_kv_router=debug`.
-- **Raw data:** [`results/2026-10-12-runpod-2x-rtxpro4500/`](../results/2026-10-12-runpod-2x-rtxpro4500/), containing `day2-pilot`, `day2-main`, `day2-diag-r1-debug` and `day2-explore-r1-prefill-scale-{2,4}`.
+  - [`scripts/day2_evaluate.py`](../scripts/day2_evaluate.py) evaluates the main cohort and [`scripts/day2_followup_evaluate.py`](../scripts/day2_followup_evaluate.py) the follow-up cohorts.
+  - [`scripts/day2_analyze.py`](../scripts/day2_analyze.py) produces per-run summaries.
+  - [`scripts/day2_plots.py`](../scripts/day2_plots.py) builds figures and Tables A/B; pass the arm list as a third argument, e.g. `R0,R1,R1S4,R2`.
+  - [`scripts/day2_router_diagnosis.py`](../scripts/day2_router_diagnosis.py) does the debug-log join and needs `DYN_LOG=info,dynamo_kv_router=debug`.
+- **Raw data:**
+  - [`results/2026-10-12-runpod-2x-rtxpro4500/`](../results/2026-10-12-runpod-2x-rtxpro4500/): pilot, main, diagnostic and exploratory runs.
+  - [`results/2026-10-12-runpod-2x-l40s/`](../results/2026-10-12-runpod-2x-l40s/): smoke runs, sensitivity and supplementary cohorts, setup and runner logs.
 
 ## Next
-1. **Upstream issue.** Open a reproducible issue on Dynamo, with this workload, the debug-log join and the scale sweep, about the KV router trading cached-prefix reuse for transient decode load under default weights. Ask whether a different default, or an agent/session-aware load term, is warranted. This is related to [ai-dynamo/dynamo#13279](https://github.com/ai-dynamo/dynamo/issues/13279).
-2. **Sensitivity cohort.** Before generalizing, run a separate, pre-registered cohort with staggered arrivals, variable pauses and 8 in flight, comparing R1 at scale 1 and 4 against R2.
+**Upstream issue.** Report to Dynamo, scoped by both cohorts, that under default weights the KV router knowingly trades cached-prefix reuse for transient load:
+- On synchronized multi-turn traffic this erases all locality.
+- On staggered traffic it keeps about half.
+- `--router-prefill-load-scale 4` recovers most but not all of the gap to session affinity.
+- `non_max_overlap_selections_total` stays 0 throughout.
+
+This is related to [ai-dynamo/dynamo#13279](https://github.com/ai-dynamo/dynamo/issues/13279).

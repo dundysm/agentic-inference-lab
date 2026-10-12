@@ -41,7 +41,13 @@ The main cohort has **40 complete runs, 4,800 successful requests, and zero repo
 
 The measured baseline crosses **prefix caching OFF/ON** with **4 versus 16 concurrent sessions**, repeated at two explicit GPU KV-memory budgets. The client controls in-flight requests (2 or 4), sends reproducible session transcripts, and inserts 0.5-second tool-like pauses outside admission. Every arm starts with a fresh server and a separate warm-up namespace.
 
-The follow-up adds **two equivalent vLLM workers behind a Dynamo router** and compares request placement policies at identical total hardware and per-worker cache budgets. **Measured (2× RTX PRO 4500, Dynamo 1.5.1, five pre-registered reps):** session affinity recomputed 0.26–0.36× the prefill of round robin and cut resumed p95 TTFT from about 290 ms to about 48 ms. The KV-aware router with default weights was no better than round robin. Debug logs show it moved sessions away from workers it correctly knew held their prefix, and raising `--router-prefill-load-scale` to 4 made it match affinity (exploratory). [Day 2 findings →](docs/day2-routing-findings.md)
+The follow-up adds **two equivalent vLLM workers behind a Dynamo router** and compares request placement policies at identical total hardware and per-worker cache budgets. **Measured (2× RTX PRO 4500, Dynamo 1.5.1, five pre-registered reps):** session affinity recomputed 0.26–0.36× the prefill of round robin and cut resumed p95 TTFT from about 290 ms to about 48 ms.
+- **Default KV-aware router:** no better than round robin on synchronized sessions, and about half of round robin's recompute under a staggered, 8-in-flight schedule (a pre-registered sensitivity cohort on 2× L40S).
+- **Diagnosis:** debug logs show it moved sessions away from workers it correctly knew held their prefix.
+- **Reweighting:** `--router-prefill-load-scale 4` recovers most but not all of the gap to affinity.
+- **Single-worker controls:** one 9 GiB worker reuses exactly as well as two affinity-routed 4.5 GiB workers, and one 4.5 GiB worker reproduces Day 1's collapse on the Day 2 stack.
+
+[Day 2 findings →](docs/day2-routing-findings.md)
 
 ## Reproduce and inspect
 
@@ -77,7 +83,7 @@ For a new GPU run, read the [benchmark methodology](docs/benchmark-methodology.m
 ## Scope and integrity
 
 - **Measured:** single-replica prefix-cache behavior under deterministic multi-turn pressure on one NVIDIA A40.
-- **Also measured:** two-replica request placement on 2× RTX PRO 4500 with Dynamo 1.5.1 ([Day 2 findings](docs/day2-routing-findings.md)).
+- **Also measured:** two-replica request placement with Dynamo 1.5.1, on 2× RTX PRO 4500 (main cohort) and 2× L40S (sensitivity and single-worker control cohorts) ([Day 2 findings](docs/day2-routing-findings.md)).
 - **Not measured:** live user/agent traces, CPU/NVMe KV offload, multi-node transfers, or an engine-side retention improvement.
 - **Metrics:** client-observed time to first content token is not identical to server-internal TTFT. Client-side admission waiting is reported separately.
 - **Statistics:** repetitions reuse the same workload on the same host; individual turns are dependent observations. No claim of independent workloads or generalizable confidence interval.

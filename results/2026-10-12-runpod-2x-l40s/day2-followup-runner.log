@@ -1,0 +1,136 @@
+SENS_START 2026-10-12T16:52:32Z
+gpu baseline MiB: 0 0
+LAUNCH sens rep=1 arm=R1S4
+worker_map {'3165218778864640009': 0, '16843800347751358730': 1}
+warmup reached all workers: [0, 1]
+COMPLETED sens rep=1 arm=R1S4
+LAUNCH sens rep=1 arm=R1
+worker_map {'10705847722654257334': 0, '10038879580031990462': 1}
+warmup reached all workers: [0, 1]
+COMPLETED sens rep=1 arm=R1
+LAUNCH sens rep=1 arm=R2
+worker_map {'16999753405521482235': 0, '13158451527400138437': 1}
+warmup reached all workers: [0, 1]
+COMPLETED sens rep=1 arm=R2
+LAUNCH sens rep=1 arm=R0
+worker_map {'9183350498146607045': 0, '2276802660281791908': 1}
+warmup reached all workers: [0, 1]
+COMPLETED sens rep=1 arm=R0
+LAUNCH sens rep=2 arm=R0
+worker_map {'11875096057595066090': 0, '3354734021687097340': 1}
+warmup reached all workers: [0, 1]
+COMPLETED sens rep=2 arm=R0
+LAUNCH sens rep=2 arm=R2
+worker_map {'7305644504503549739': 0, '6869358576192285564': 1}
+warmup reached all workers: [0, 1]
+COMPLETED sens rep=2 arm=R2
+LAUNCH sens rep=2 arm=R1S4
+worker_map {'10042013085232253286': 0, '4937947054539964834': 1}
+warmup reached all workers: [0, 1]
+COMPLETED sens rep=2 arm=R1S4
+LAUNCH sens rep=2 arm=R1
+worker_map {'11325002695165427801': 0, '14062120275462051370': 1}
+warmup reached all workers: [0, 1]
+COMPLETED sens rep=2 arm=R1
+LAUNCH sens rep=3 arm=R1S4
+worker_map {'9218489512202511246': 0, '7070894890990155669': 1}
+warmup reached all workers: [0, 1]
+COMPLETED sens rep=3 arm=R1S4
+LAUNCH sens rep=3 arm=R0
+worker_map {'6237674890344581834': 0, '2700728004565083315': 1}
+warmup reached all workers: [0, 1]
+COMPLETED sens rep=3 arm=R0
+LAUNCH sens rep=3 arm=R2
+worker_map {'5889996291924520660': 0, '3054243713897112205': 1}
+warmup reached all workers: [0, 1]
+COMPLETED sens rep=3 arm=R2
+LAUNCH sens rep=3 arm=R1
+worker_map {'11119711777400413966': 0, '12921620622234955214': 1}
+warmup reached all workers: [0, 1]
+COMPLETED sens rep=3 arm=R1
+LAUNCH sens rep=4 arm=R2
+worker_map {'2636206748105286014': 0, '17959280933144324699': 1}
+warmup reached all workers: [0, 1]
+COMPLETED sens rep=4 arm=R2
+LAUNCH sens rep=4 arm=R1
+worker_map {'2172890696987677833': 0, '3251500252089420078': 1}
+warmup reached all workers: [0, 1]
+COMPLETED sens rep=4 arm=R1
+LAUNCH sens rep=4 arm=R0
+worker_map {'17183393073832400388': 0, '1944139518807306059': 1}
+warmup reached all workers: [0, 1]
+COMPLETED sens rep=4 arm=R0
+LAUNCH sens rep=4 arm=R1S4
+worker_map {'5128843083916262710': 0, '12714332954729880159': 1}
+warmup reached all workers: [0, 1]
+COMPLETED sens rep=4 arm=R1S4
+LAUNCH sens rep=5 arm=R1
+worker_map {'13675845639733158860': 0, '5375766108522958981': 1}
+warmup reached all workers: [0, 1]
+COMPLETED sens rep=5 arm=R1
+LAUNCH sens rep=5 arm=R0
+worker_map {'8071276528622137148': 0, '4611770820963167646': 1}
+warmup reached all workers: [0, 1]
+COMPLETED sens rep=5 arm=R0
+LAUNCH sens rep=5 arm=R2
+worker_map {'10058721904399488010': 0, '10062048089687918507': 1}
+warmup reached all workers: [0, 1]
+COMPLETED sens rep=5 arm=R2
+LAUNCH sens rep=5 arm=R1S4
+worker_map {'4532103296219240441': 0, '3790894541646467045': 1}
+warmup reached all workers: [0, 1]
+COMPLETED sens rep=5 arm=R1S4
+COHORT_DONE sens
+SUPP_START 2026-10-12T17:15:04Z
+gpu baseline MiB: 0 0
+LAUNCH supp rep=1 arm=S45
+worker_map {'1155229373378902412': 0}
+warmup reached all workers: [0]
+COMPLETED supp rep=1 arm=S45
+LAUNCH supp rep=1 arm=R3H
+worker_map {'4973236517104037992': 0, '14681001197817026210': 1}
+warmup reached all workers: [0, 1]
+COMPLETED supp rep=1 arm=R3H
+LAUNCH supp rep=1 arm=S9
+worker_map {'7219780020690290010': 0}
+warmup reached all workers: [0]
+COMPLETED supp rep=1 arm=S9
+LAUNCH supp rep=1 arm=R2
+worker_map {'4153625519738776731': 0, '11981415309677120849': 1}
+warmup reached all workers: [0, 1]
+COMPLETED supp rep=1 arm=R2
+LAUNCH supp rep=2 arm=R2
+worker_map {'3924964284683636113': 0, '11181298607170329847': 1}
+warmup reached all workers: [0, 1]
+COMPLETED supp rep=2 arm=R2
+LAUNCH supp rep=2 arm=S9
+worker_map {'5091905339975499919': 0}
+warmup reached all workers: [0]
+COMPLETED supp rep=2 arm=S9
+LAUNCH supp rep=2 arm=S45
+worker_map {'9279370634062005898': 0}
+warmup reached all workers: [0]
+COMPLETED supp rep=2 arm=S45
+LAUNCH supp rep=2 arm=R3H
+worker_map {'581801797435287831': 0, '8635274877122310744': 1}
+warmup reached all workers: [0, 1]
+COMPLETED supp rep=2 arm=R3H
+LAUNCH supp rep=3 arm=S45
+worker_map {'3332055022891763815': 0}
+warmup reached all workers: [0]
+COMPLETED supp rep=3 arm=S45
+LAUNCH supp rep=3 arm=R2
+worker_map {'3482949179012402569': 0, '12490056041943151027': 1}
+warmup reached all workers: [0, 1]
+COMPLETED supp rep=3 arm=R2
+LAUNCH supp rep=3 arm=S9
+worker_map {'4362795028397357151': 0}
+warmup reached all workers: [0]
+COMPLETED supp rep=3 arm=S9
+LAUNCH supp rep=3 arm=R3H
+worker_map {'12623268377368606603': 0, '11891912069955841586': 1}
+warmup reached all workers: [0, 1]
+COMPLETED supp rep=3 arm=R3H
+COHORT_DONE supp
+FOLLOWUP_DONE 2026-10-12T17:28:58Z
+EXIT_CODE=0

@@ -25,10 +25,12 @@ spec = importlib.util.spec_from_file_location("day2_analyze", Path(__file__).wit
 ana = importlib.util.module_from_spec(spec); spec.loader.exec_module(ana)
 
 ARMS = ["R0", "R1", "R2", "R3"]
-LABEL = {"R0": "R0 round robin", "R1": "R1 KV-aware", "R2": "R2 hard affinity", "R3": "R3 soft affinity"}
+LABEL = {"R0": "R0 round robin", "R1": "R1 KV-aware", "R2": "R2 hard affinity", "R3": "R3 soft affinity",
+         "R1S4": "R1S4 KV, prefill x4"}
 # Categorical slots 1-4 of the validated reference palette (light mode); markers give secondary encoding.
-COLOR = {"R0": "#2a78d6", "R1": "#eb6834", "R2": "#1baf7a", "R3": "#eda100"}
-MARKER = {"R0": "o", "R1": "s", "R2": "^", "R3": "D"}
+COLOR = {"R0": "#2a78d6", "R1": "#eb6834", "R2": "#1baf7a", "R3": "#eda100",
+         "R1S4": "#4a3aa7"}  # violet: magenta failed the normal-vision floor next to orange
+MARKER = {"R0": "o", "R1": "s", "R2": "^", "R3": "D", "R1S4": "v"}
 SURFACE, INK, INK2, MUTED, GRID = "#fcfcfb", "#0b0b0b", "#52514e", "#8a8984", "#e6e5e0"
 WORKER = {0: "#3b3a37", 1: "#bdbbb3"}   # neutral pair: workers are not arms
 
@@ -77,8 +79,9 @@ def plot_reuse_by_turn(runs, reps, out):
     ax.set_ylabel("Mean cached fraction of prompt tokens")
     ax.set_title("Resumed-turn prefix reuse by routing arm")
     ax.legend(frameon=False, loc="lower left", ncol=2)
-    ax.annotate("R2 and R3 overlap (identical reuse)", (6, 0.99), xytext=(0, 9),
-                textcoords="offset points", ha="center", va="bottom", fontsize=9, color=INK2)
+    if "R3" in ARMS and "R2" in ARMS:
+        ax.annotate("R2 and R3 overlap (identical reuse)", (6, 0.99), xytext=(0, 9),
+                    textcoords="offset points", ha="center", va="bottom", fontsize=9, color=INK2)
     finish(fig, out / "day2_reuse_by_turn.png",
            "Bold line: median across 5 reps of the per-turn mean over 16 sessions; faint lines: individual reps. "
            "Mean, not median: medians hide the misses.")
@@ -98,7 +101,7 @@ def plot_ttft(runs, reps, out):
                    edgecolors=SURFACE, linewidths=1.5, zorder=3, label=None)
         ax.annotate(f"p95 {s.median(p95):.0f} ms", (i + 0.14, s.median(p95)), xytext=(6, 0),
                     textcoords="offset points", va="center", fontsize=9, color=INK)
-    ax.set_xticks(range(4), [LABEL[a] for a in ARMS]); ax.set_yscale("log")
+    ax.set_xticks(range(len(ARMS)), [LABEL[a] for a in ARMS]); ax.set_yscale("log")
     ax.set_yticks([20, 30, 50, 100, 200, 300, 500], ["20", "30", "50", "100", "200", "300", "500"])
     ax.yaxis.set_minor_formatter(matplotlib.ticker.NullFormatter()); ax.grid(axis="x", visible=False)
     ax.set_ylabel("Resumed-turn TTFT, client-observed (ms, log scale)")
@@ -123,17 +126,20 @@ def plot_prefill(runs, reps, out):
         totals = [runs[(rep, arm)]["summary"]["prefill_computed_total"] / 1000 for rep in reps]
         ax.annotate(f"{s.median(totals):.0f}k\n({min(totals):.0f}–{max(totals):.0f}k)", (i, w0 + w1),
                     xytext=(0, 6), textcoords="offset points", ha="center", va="bottom", fontsize=9, color=INK)
-    ax.set_xticks(range(4), [LABEL[a] for a in ARMS])
+    ax.set_xticks(range(len(ARMS)), [LABEL[a] for a in ARMS])
     ax.set_ylabel("Recomputed prefill tokens per run (thousands)")
     ax.set_title("Recomputed prefill per worker (median of 5 reps)")
     ax.margins(y=0.18); ax.grid(axis="x", visible=False); ax.legend(frameon=False, loc="upper right")
+    shares = [runs[k]["summary"]["w0_requests"] / runs[k]["summary"]["requests"] for k in runs]
+    split = ("Requests were split 96/96 in every run." if all(abs(x - 0.5) < 1e-9 for x in shares) else
+             f"Worker-0 request share ranged {min(shares):.0%}-{max(shares):.0%} across runs.")
     finish(fig, out / "day2_prefill_per_worker.png",
-           "Worker vLLM counter deltas (vllm:request_prefill_kv_computed_tokens_sum). Label: median total and range across reps. "
-           "Requests were split 96/96 in every run.")
+           "Worker vLLM counter deltas (vllm:request_prefill_kv_computed_tokens_sum). Bars stack each worker's median; "
+           "label is the median total and range across reps. " + split)
 
 
 def plot_placement(runs, rep, out):
-    fig, axes = plt.subplots(1, 4, figsize=(13, 5), sharey=True)
+    fig, axes = plt.subplots(1, len(ARMS), figsize=(13, 5), sharey=True)
     for ax, arm in zip(axes, ARMS):
         rows = runs[(rep, arm)]["rows"]
         by = {(r["session"], r["turn"]): r for r in rows}
@@ -157,8 +163,16 @@ def plot_placement(runs, rep, out):
     fig.legend(handles, ["served by worker 0", "served by worker 1", "resumed cache miss (<50% cached)"],
                frameon=False, loc="upper right", ncol=3, bbox_to_anchor=(1.0, 1.04))
     fig.suptitle(f"Session-to-worker placement, rep {rep}", x=0.01, ha="left", fontweight="bold", y=1.04)
-    finish(fig, out / "day2_session_placement.png",
-           "Each cell is one request. Every miss is on a turn where the session changed worker.")
+    misses = still = 0
+    for arm in ARMS:
+        by = {(r["session"], r["turn"]): r for r in runs[(rep, arm)]["rows"]}
+        for (sess, t), r in by.items():
+            if t and r["frac"] < 0.5:
+                misses += 1; still += r["worker"] == by[(sess, t - 1)]["worker"]
+    note = ("Every miss is on a turn where the session changed worker." if still == 0 else
+            f"{misses - still} of {misses} misses are on turns where the session changed worker; "
+            f"{still} occurred on the same worker.")
+    finish(fig, out / "day2_session_placement.png", "Each cell is one request. " + note)
 
 
 def kv_tokens(d: Path, i: int) -> str:
@@ -173,7 +187,7 @@ def tables(runs, reps, out):
     def span(xs, fmt):
         return f"{fmt.format(s.median(xs))} [{fmt.format(min(xs))}, {fmt.format(max(xs))}]"
     mean_frac = lambda rep, arm: s.mean(r["frac"] for r in runs[(rep, arm)]["rows"] if r["turn"] > 0)
-    for arm in ("R1", "R2", "R3"):
+    for arm in [a for a in ARMS if a != "R0"]:
         g = lambda rep, k: runs[(rep, arm)]["summary"][k] / runs[(rep, "R0")]["summary"][k]
         d = lambda rep, k: runs[(rep, arm)]["summary"][k] - runs[(rep, "R0")]["summary"][k]
         lines.append(" | ".join([
@@ -206,7 +220,10 @@ def tables(runs, reps, out):
 
 
 def main() -> None:
+    global ARMS
     root, out = Path(sys.argv[1]), Path(sys.argv[2])
+    if len(sys.argv) > 3:  # optional comma-separated arm list, e.g. R0,R1,R1S4,R2
+        ARMS = sys.argv[3].split(",")
     out.mkdir(parents=True, exist_ok=True)
     runs = load(root)
     reps = sorted({k[0] for k in runs})

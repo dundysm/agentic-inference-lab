@@ -1,0 +1,18 @@
+gpu baseline MiB: 0 0
+LAUNCH smoke-fixed rep=1 arm=R1S4
+worker_map {'11502709506245503169': 0, '9403537759634083285': 1}
+warmup reached all workers: [0, 1]
+COMPLETED smoke-fixed rep=1 arm=R1S4
+LAUNCH smoke-fixed rep=1 arm=S9
+worker_map {'11725514053015924961': 0}
+warmup reached all workers: [0]
+COMPLETED smoke-fixed rep=1 arm=S9
+COHORT_DONE smoke-fixed
+gpu baseline MiB: 0 0
+LAUNCH smoke-sens rep=1 arm=R2
+worker_map {'4268500897922253228': 0, '2091639378744215014': 1}
+warmup reached all workers: [0, 1]
+COMPLETED smoke-sens rep=1 arm=R2
+COHORT_DONE smoke-sens
+SMOKE_DONE
+EXIT_CODE=0

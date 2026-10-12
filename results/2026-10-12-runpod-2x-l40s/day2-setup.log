@@ -1,0 +1,581 @@
++ curl -LsSf https://astral.sh/uv/install.sh
++ sh
+downloading uv 0.13.0 x86_64-unknown-linux-gnu
+installing to /root/.local/bin
+  uv
+  uvx
+everything's installed!
+
+To add $HOME/.local/bin to your PATH, either restart your shell or run:
+
+    source $HOME/.local/bin/env (sh, bash, zsh)
+    source $HOME/.local/bin/env.fish (fish)
+[31mWARN[m: The following commands are shadowed by other commands in your PATH: uv uvx
++ export PATH=/root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin
++ PATH=/root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin
++ git clone -q --depth 1 --branch v1.5.1 https://github.com/ai-dynamo/dynamo.git /root/dynamo
+Note: switching to '2093662a4d4e5fd318732935213dde08dc7be818'.
+
+You are in 'detached HEAD' state. You can look around, make experimental
+changes and commit them, and you can discard any commits you make in this
+state without impacting any branches by switching back to a branch.
+
+If you want to create a new branch to retain commits you create, you may
+do so (now or later) by using -c with the switch command. Example:
+
+  git switch -c <new-branch-name>
+
+Or undo this operation with:
+
+  git switch -
+
+Turn off this advice by setting config variable advice.detachedHead to false
+
++ uv venv /root/venv --python 3.12
+Using CPython 3.12.3 interpreter at: /usr/local/bin/python
+Creating virtual environment at: /root/venv
+Activate with: source /root/venv/bin/activate
++ source /root/venv/bin/activate
+++ '[' -z '' ']'
+++ '[' -n x ']'
+++ SCRIPT_PATH=/root/venv/bin/activate
+++ '[' /root/venv/bin/activate = env/runpod_day2_setup.sh ']'
+++ deactivate nondestructive
+++ unset -f pydoc
+++ '[' -z '' ']'
+++ '[' -z '' ']'
+++ hash -r
+++ '[' -z '' ']'
+++ unset VIRTUAL_ENV
+++ unset VIRTUAL_ENV_PROMPT
+++ '[' '!' nondestructive = nondestructive ']'
+++ VIRTUAL_ENV=/root/venv
+++ '[' linux-gnu = cygwin ']'
+++ '[' linux-gnu = msys ']'
+++ export VIRTUAL_ENV
+++ '[' -z '' ']'
+++ unset SCRIPT_PATH
+++ _OLD_VIRTUAL_PATH=/root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin
+++ PATH=/root/venv/bin:/root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin
+++ export PATH
+++ '[' x '!=' x ']'
++++ basename /root/venv
+++ VIRTUAL_ENV_PROMPT=venv
+++ export VIRTUAL_ENV_PROMPT
+++ '[' -z '' ']'
+++ '[' -z '' ']'
+++ _OLD_VIRTUAL_PS1=
+++ PS1='(venv) '
+++ export PS1
+++ alias pydoc
+++ true
+++ hash -r
++ uv pip install 'ai-dynamo[vllm]==1.5.1'
+Using Python 3.12.3 environment at: /root/venv
+Resolved 290 packages in 1.87s
+Downloading pandas (10.3MiB)
+Downloading nvidia-cuda-cupti (10.2MiB)
+Downloading matplotlib (9.4MiB)
+Downloading nvidia-cufft (204.2MiB)
+Downloading scipy (33.7MiB)
+Downloading nvidia-curand (56.8MiB)
+Downloading botocore (15.3MiB)
+Downloading nvidia-cuda-nvrtc (86.0MiB)
+Downloading nvidia-cusparselt-cu13 (162.3MiB)
+Downloading scikit-learn (8.7MiB)
+Downloading numpy (15.8MiB)
+Downloading flashinfer-python (15.1MiB)
+Downloading nvidia-cusparse (139.2MiB)
+Downloading cuda-bindings (6.8MiB)
+Downloading pillow (6.6MiB)
+Downloading nvidia-nvjitlink (40.5MiB)
+Downloading nvidia-nvshmem-cu13 (57.6MiB)
+Downloading plotly (9.2MiB)
+Downloading nvidia-cudnn-frontend (9.7MiB)
+Downloading nvidia-cusolver (191.6MiB)
+Downloading nvidia-cutlass-dsl-libs-cu12 (84.4MiB)
+Downloading triton (188.6MiB)
+Downloading ray (75.2MiB)
+Downloading z3-solver (27.9MiB)
+Downloading llvmlite (53.7MiB)
+Downloading vllm (299.9MiB)
+Downloading tokenspeed-triton (89.0MiB)
+Downloading torchvision (7.3MiB)
+Downloading pyarrow (51.4MiB)
+Downloading grpcio (6.8MiB)
+Downloading pycountry (7.7MiB)
+Downloading torchcodec (9.5MiB)
+Downloading opencv-python-headless (58.4MiB)
+Downloading jaxlib (97.1MiB)
+Downloading nvidia-nvvm (69.2MiB)
+Downloading nixl-cu12 (78.4MiB)
+Downloading nvidia-cudnn-cu13 (349.2MiB)
+Downloading tilelang (48.2MiB)
+Downloading torch (502.2MiB)
+Downloading nvidia-nccl-cu13 (196.4MiB)
+Downloading tfp-nightly (6.7MiB)
+Downloading nvidia-cuda-nvcc (45.5MiB)
+Downloading nvidia-cutlass-dsl-libs-cu13 (84.0MiB)
+Downloading tensorstore (20.6MiB)
+Downloading transformers (12.0MiB)
+Downloading pynvvideocodec (41.2MiB)
+Downloading nvidia-cublas (403.5MiB)
+Downloading nixl-cu13 (63.3MiB)
+Downloading ai-dynamo-runtime (64.2MiB)
+Downloading runai-model-streamer-gcs (22.2MiB)
+ Downloaded pillow
+Downloading bokeh (6.3MiB)
+ Downloaded cuda-bindings
+ Downloaded grpcio
+Downloading cuda-core (6.3MiB)
+Downloading mistral-common (6.3MiB)
+ Downloaded tfp-nightly
+Downloading sympy (6.0MiB)
+ Downloaded torchvision
+Downloading runai-model-streamer-s3 (5.7MiB)
+ Downloaded pycountry
+Downloading runai-model-streamer-azure (5.4MiB)
+ Downloaded scikit-learn
+Downloading zstandard (5.3MiB)
+ Downloaded plotly
+Downloading fonttools (5.1MiB)
+ Downloaded matplotlib
+Downloading nvidia-cuda-nvdisasm (5.0MiB)
+ Downloaded torchcodec
+Downloading cryptography (4.5MiB)
+ Downloaded nvidia-cudnn-frontend
+Downloading sqlalchemy (4.5MiB)
+ Downloaded nvidia-cuda-cupti
+Downloading uvloop (4.3MiB)
+ Downloaded pandas
+Downloading hf-xet (4.0MiB)
+ Downloaded transformers
+Downloading nvidia-cuda-cccl (3.7MiB)
+ Downloaded runai-model-streamer-s3
+Downloading numba (3.6MiB)
+ Downloaded mistral-common
+ Downloaded bokeh
+ Downloaded sympy
+Downloading nccl4py (3.5MiB)
+ Downloaded runai-model-streamer-azure
+Downloading tokenizers (3.2MiB)
+Downloading llguidance (2.9MiB)
+ Downloaded cuda-core
+Downloading ai-dynamo (3.4MiB)
+Downloading openai-harmony (2.8MiB)
+ Downloaded zstandard
+Downloading nvidia-cutlass-dsl-libs-base (2.7MiB)
+ Downloaded cryptography
+Downloading grpcio-tools (2.6MiB)
+ Downloaded sqlalchemy
+Downloading apache-tvm-ffi (2.6MiB)
+ Downloaded hf-xet
+ Downloaded nvidia-cuda-nvdisasm
+Downloading outlines-core (2.2MiB)
+Downloading nvidia-cuda-runtime (2.1MiB)
+ Downloaded uvloop
+ Downloaded fonttools
+Downloading jax (2.1MiB)
+Downloading openai (2.1MiB)
+ Downloaded flashinfer-python
+ Downloaded botocore
+ Downloaded numpy
+ Downloaded nvidia-cuda-cccl
+ Downloaded openai-harmony
+   Building aisimulate==0.12.0
+ Downloaded llguidance
+ Downloaded tokenizers
+ Downloaded nvidia-cuda-runtime
+ Downloaded outlines-core
+ Downloaded jax
+ Downloaded ai-dynamo
+ Downloaded numba
+ Downloaded openai
+ Downloaded grpcio-tools
+ Downloaded nccl4py
+ Downloaded nvidia-cutlass-dsl-libs-base
+ Downloaded apache-tvm-ffi
+Downloading networkx (2.0MiB)
+Downloading pydantic-core (2.0MiB)
+Downloading fastsafetensors (2.0MiB)
+Downloading anthropic (1.9MiB)
+Downloading aiohttp (1.8MiB)
+Downloading kubernetes (1.9MiB)
+Downloading sentencepiece (1.3MiB)
+Downloading kiwisolver (1.4MiB)
+Downloading torchaudio (1.7MiB)
+Downloading soundfile (1.3MiB)
+Downloading pygments (1.2MiB)
+Downloading nvidia-cufile (1.2MiB)
+Downloading xgrammar (1.3MiB)
+Downloading tiktoken (1.1MiB)
+Downloading setuptools (1.0MiB)
+ Downloaded setuptools
+ Downloaded nvidia-cufile
+ Downloaded tiktoken
+ Downloaded pygments
+ Downloaded xgrammar
+ Downloaded soundfile
+ Downloaded sentencepiece
+ Downloaded kiwisolver
+ Downloaded torchaudio
+ Downloaded anthropic
+ Downloaded networkx
+ Downloaded pydantic-core
+ Downloaded kubernetes
+ Downloaded aiohttp
+ Downloaded fastsafetensors
+ Downloaded tensorstore
+ Downloaded runai-model-streamer-gcs
+ Downloaded z3-solver
+ Downloaded scipy
+      Built aisimulate==0.12.0
+ Downloaded nvidia-nvjitlink
+ Downloaded pynvvideocodec
+ Downloaded nvidia-cuda-nvcc
+ Downloaded tilelang
+ Downloaded pyarrow
+ Downloaded llvmlite
+ Downloaded nvidia-curand
+ Downloaded nvidia-nvshmem-cu13
+ Downloaded opencv-python-headless
+ Downloaded nvidia-nvvm
+ Downloaded ray
+ Downloaded nvidia-cutlass-dsl-libs-cu13
+ Downloaded nvidia-cutlass-dsl-libs-cu12
+ Downloaded nvidia-cuda-nvrtc
+ Downloaded tokenspeed-triton
+ Downloaded nixl-cu13
+ Downloaded nixl-cu12
+ Downloaded nvidia-cusparse
+ Downloaded ai-dynamo-runtime
+ Downloaded jaxlib
+ Downloaded nvidia-cusparselt-cu13
+ Downloaded triton
+ Downloaded nvidia-cusolver
+ Downloaded nvidia-cufft
+ Downloaded nvidia-nccl-cu13
+ Downloaded vllm
+ Downloaded nvidia-cudnn-cu13
+ Downloaded nvidia-cublas
+ Downloaded torch
+Prepared 290 packages in 54.41s
+Installed 290 packages in 3.57s
+ + absl-py==2.5.1
+ + agent-detector==2.0.0
+ + ai-dynamo==1.5.1
+ + ai-dynamo-runtime==1.5.1
+ + aiohappyeyeballs==2.7.1
+ + aiohttp==3.14.5
+ + aiosignal==1.4.0
+ + aisimulate==0.12.0
+ + annotated-doc==0.0.5
+ + annotated-types==0.8.0
+ + anthropic==1.13.0
+ + anyio==4.15.1
+ + apache-tvm-ffi==0.1.11
+ + astor==0.8.1
+ + attrs==26.1.0
+ + azure-core==1.41.0
+ + azure-identity==1.26.0
+ + azure-storage-blob==12.31.0
+ + blake3==1.0.11
+ + bokeh==3.10.0
+ + boto3==1.43.111
+ + botocore==1.43.111
+ + cachetools==7.2.1
+ + cbor2==6.1.5
+ + certifi==2026.7.22
+ + cffi==2.1.1
+ + charset-normalizer==3.5.2
+ + chex==0.1.87
+ + click==8.5.0
+ + cloudpickle==3.1.2
+ + compressed-tensors==0.17.0
+ + contourpy==1.4.0
+ + cryptography==50.0.2
+ + cuda-bindings==13.4.3
+ + cuda-core==1.2.1
+ + cuda-pathfinder==1.8.3
+ + cuda-python==13.4.1
+ + cuda-tile==1.6.0
+ + cuda-toolkit==13.0.3.0
+ + cycler==0.12.1
+ + decorator==5.3.1
+ + depyf==0.20.0
+ + detect-installer==0.2.1
+ + dill==0.4.1
+ + dm-tree==0.1.10
+ + dnspython==2.9.0
+ + docstring-parser==0.18.0
+ + durationpy==0.11
+ + einops==0.8.2
+ + email-validator==2.3.0
+ + equinox==0.11.7
+ + etils==1.14.0
+ + fastapi==0.136.3
+ + fastapi-cli==0.0.32
+ + fastapi-cloud-cli==0.26.0
+ + fastar==0.12.0
+ + fastsafetensors==0.4.0
+ + filelock==4.1.1
+ + flashinfer-python==0.6.16.post3
+ + flax==0.10.0
+ + fonttools==4.66.1
+ + frozenlist==1.8.0
+ + fsspec==2026.9.0
+ + gast==0.7.0
+ + google-api-core==2.42.0
+ + google-auth==2.61.0
+ + google-cloud-core==2.8.0
+ + google-cloud-storage==3.17.0
+ + google-crc32c==1.9.0
+ + google-resumable-media==2.11.0
+ + google-vizier==0.1.21
+ + googleapis-common-protos==1.75.5
+ + grpcio==1.84.0
+ + grpcio-tools==1.81.1
+ + h11==0.16.0
+ + hf-xet==1.7.0
+ + httpcore==1.0.9
+ + httpcore2==2.13.1
+ + httptools==0.9.0
+ + httpx==0.28.1
+ + httpx2==2.13.1
+ + huggingface-hub==2.2.0
+ + humanize==4.16.0
+ + humming-kernels==0.1.12
+ + idna==3.20
+ + ijson==3.5.1
+ + interegular==0.3.3
+ + isodate==0.7.2
+ + jax==0.4.38
+ + jaxlib==0.4.38
+ + jaxopt==0.8.5
+ + jaxtyping==0.3.11
+ + jinja2==3.1.6
+ + jiter==0.17.0
+ + jmespath==1.1.0
+ + joblib==1.6.0
+ + jsonschema==4.26.0
+ + jsonschema-specifications==2025.9.1
+ + kiwisolver==1.5.1
+ + kubernetes==32.0.1
+ + lark==1.2.2
+ + lazy-loader==0.6
+ + librosa==1.0.0
+ + llguidance==1.7.6
+ + llvmlite==0.47.0
+ + lm-format-enforcer==0.11.3
+ + loguru==0.7.3
+ + markdown-it-py==4.2.0
+ + markupsafe==3.0.4
+ + matplotlib==3.11.2
+ + mcp==2.3.0
+ + mcp-types==2.3.0
+ + mdurl==0.1.2
+ + mistral-common==1.12.0
+ + ml-dtypes==0.6.0
+ + model-hosting-container-standards==0.1.16
+ + mpmath==1.3.0
+ + msal==1.39.0
+ + msal-extensions==1.3.1
+ + msgpack==1.2.3
+ + msgspec==0.22.0
+ + multidict==7.1.0
+ + munch==4.0.0
+ + narwhals==2.27.1
+ + nccl4py==0.6.0
+ + nest-asyncio==1.6.0
+ + networkx==3.7
+ + ninja==1.13.2
+ + nixl==1.3.2
+ + nixl-cu12==1.3.2
+ + nixl-cu13==1.3.2
+ + numba==0.65.0
+ + numpy==2.3.5
+ + nvidia-cublas==13.1.1.3
+ + nvidia-cuda-cccl==13.3.4.3.1
+ + nvidia-cuda-crt==13.4.92
+ + nvidia-cuda-cupti==13.0.85
+ + nvidia-cuda-nvcc==13.4.92
+ + nvidia-cuda-nvdisasm==13.4.92
+ + nvidia-cuda-nvrtc==13.0.88
+ + nvidia-cuda-runtime==13.0.96
+ + nvidia-cudnn-cu13==9.20.0.48
+ + nvidia-cudnn-frontend==1.31.0
+ + nvidia-cufft==12.0.0.61
+ + nvidia-cufile==1.15.1.6
+ + nvidia-curand==10.4.0.35
+ + nvidia-cusolver==12.0.4.66
+ + nvidia-cusparse==12.6.3.3
+ + nvidia-cusparselt-cu13==0.8.1
+ + nvidia-cutlass-dsl==4.6.2
+ + nvidia-cutlass-dsl-libs-base==4.6.2
+ + nvidia-cutlass-dsl-libs-core==4.6.2
+ + nvidia-cutlass-dsl-libs-cu12==4.6.2
+ + nvidia-cutlass-dsl-libs-cu13==4.6.2
+ + nvidia-ml-py==13.615.71
+ + nvidia-nccl-cu13==2.29.7
+ + nvidia-nvjitlink==13.4.92
+ + nvidia-nvshmem-cu13==3.4.5
+ + nvidia-nvtx==13.0.85
+ + nvidia-nvvm==13.4.92
+ + nvtx==0.2.15
+ + oauthlib==4.0.0
+ + openai==3.29.0
+ + openai-harmony==0.0.8
+ + opencv-python-headless==5.0.0.93
+ + opentelemetry-api==1.45.1
+ + opentelemetry-exporter-http-transport==0.66b1
+ + opentelemetry-exporter-otlp==1.45.1
+ + opentelemetry-exporter-otlp-common==0.66b1
+ + opentelemetry-exporter-otlp-proto-common==1.45.1
+ + opentelemetry-exporter-otlp-proto-grpc==1.45.1
+ + opentelemetry-exporter-otlp-proto-http==1.45.1
+ + opentelemetry-proto==1.45.1
+ + opentelemetry-sdk==1.45.1
+ + opentelemetry-semantic-conventions==0.66b1
+ + opentelemetry-semantic-conventions-ai==0.5.1
+ + opt-einsum==3.4.0
+ + optax==0.2.4
+ + orbax-checkpoint==0.11.5
+ + outlines-core==0.2.14
+ + packaging==26.3
+ + pandas==3.0.6
+ + partial-json-parser==0.2.1.1.post7
+ + pillow==12.3.0
+ + platformdirs==4.13.0
+ + plotext==5.3.2
+ + plotly==7.1.0
+ + pooch==1.9.0
+ + portpicker==1.6.0
+ + prettytable==3.18.0
+ + prometheus-client==0.26.0
+ + prometheus-fastapi-instrumentator==8.1.0
+ + propcache==0.5.4
+ + proto-plus==1.29.0
+ + protobuf==6.33.6
+ + psutil==7.2.2
+ + py-cpuinfo==9.0.0
+ + pyarrow==26.0.0
+ + pyasn1==0.6.4
+ + pyasn1-modules==0.4.2
+ + pybase64==1.5.1
+ + pycountry==26.2.16
+ + pycparser==3.11
+ + pydantic==2.13.0
+ + pydantic-core==2.46.0
+ + pydantic-extra-types==2.11.1
+ + pydantic-settings==2.15.0
+ + pygments==2.21.0
+ + pyjwt==2.15.1
+ + pynvvideocodec==2.0.4
+ + pyparsing==3.3.3
+ + python-dateutil==2.9.0.post0
+ + python-dotenv==1.2.4
+ + python-json-logger==4.2.0
+ + python-multipart==0.0.32
+ + pyyaml==6.0.3
+ + pyzmq==27.2.0
+ + quack-kernels==0.6.4
+ + ray==2.59.0
+ + referencing==0.37.0
+ + regex==2026.9.29
+ + requests==2.34.2
+ + requests-oauthlib==2.0.0
+ + rich==15.0.0
+ + rich-toolkit==0.20.6
+ + rignore==0.8.1
+ + rpds-py==2026.9.1
+ + runai-model-streamer==0.16.1
+ + runai-model-streamer-azure==0.16.1
+ + runai-model-streamer-gcs==0.16.1
+ + runai-model-streamer-s3==0.16.1
+ + s3transfer==0.19.2
+ + safetensors==0.8.0
+ + scikit-learn==1.9.1
+ + scipy==1.18.1
+ + sentencepiece==0.2.2
+ + sentry-sdk==2.72.0
+ + setproctitle==1.3.8
+ + setuptools==80.10.2
+ + shellingham==1.5.4
+ + simplejson==4.2.0
+ + six==1.17.0
+ + sniffio==1.3.1
+ + soundfile==0.14.0
+ + soxr==1.1.0
+ + sqlalchemy==2.1.4
+ + sse-starlette==3.5.0
+ + starlette==1.7.0
+ + supervisor==4.3.0
+ + sympy==1.14.0
+ + tabulate==0.10.0
+ + tensorstore==0.1.85
+ + tfp-nightly==0.26.0.dev20260626
+ + threadpoolctl==3.7.0
+ + tiktoken==0.14.0
+ + tilelang==0.1.12
+ + tokenizers==0.23.3
+ + tokenspeed-mla==0.1.8
+ + tokenspeed-triton==3.9.10.post20261008
+ + toolz==1.2.0
+ + torch==2.13.0
+ + torch-c-dlpack-ext==0.1.5
+ + torchaudio==2.11.0
+ + torchcodec==0.17.0
+ + torchvision==0.28.0
+ + tornado==6.5.10
+ + tqdm==4.70.1
+ + transformers==5.19.0
+ + triton==3.7.1
+ + truststore==0.10.4
+ + typeguard==2.13.3
+ + typer==0.27.3
+ + typing-extensions==4.16.0
+ + typing-inspection==0.4.4
+ + urllib3==2.8.0
+ + uvicorn==0.54.0
+ + uvloop==0.23.0
+ + vllm==0.28.0
+ + wadler-lindig==0.1.7
+ + watchfiles==1.3.0
+ + wcwidth==0.9.2
+ + websocket-client==1.9.2
+ + websockets==17.2
+ + wrapt==2.5.0
+ + xgrammar==0.2.8
+ + xyzservices==2026.9.1
+ + yarl==1.25.1
+ + z3-solver==4.15.4.0
+ + zipp==4.1.1
+ + zstandard==0.25.0
++ uv pip install -r requirements.txt pip
+Using Python 3.12.3 environment at: /root/venv
+Resolved 27 packages in 53ms
+Downloading pip (1.7MiB)
+ Downloaded pip
+Prepared 2 packages in 52ms
+Uninstalled 1 package in 4ms
+Installed 2 packages in 117ms
+ - huggingface-hub==2.2.0
+ + huggingface-hub==1.33.0
+ + pip==26.2.1
++ uv cache clean
+Clearing cache at: /root/.cache/uv
+Removed 79339 files (9.8GiB)
++ export HF_HOME=/root/hf-cache
++ HF_HOME=/root/hf-cache
++ hf download Qwen/Qwen3-4B-Instruct-2507 --revision cdbee75f17c01a7cc42f958dc650907174af0554
+[90mHint: A new version of huggingface_hub (2.2.0) is available! You are using version 1.33.0.
+To update, run: hf update[0m
+[90mHint: The `hf-cli` skill is not installed. Run `hf skills add -g` to teach your AI agents how to use the `hf` CLI.[0m
+Fetching 13 files:   0%|          | 0/13 [00:00<?, ?it/s]Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Fetching 13 files:   8%|▊         | 1/13 [00:00<00:02,  4.69it/s]Fetching 13 files:  46%|████▌     | 6/13 [00:00<00:00, 15.43it/s]Fetching 13 files:  69%|██████▉   | 9/13 [00:00<00:00, 16.24it/s]Fetching 13 files:  85%|████████▍ | 11/13 [00:01<00:00,  5.42it/s]Fetching 13 files: 100%|██████████| 13/13 [00:10<00:00,  1.48s/it]Fetching 13 files: 100%|██████████| 13/13 [00:10<00:00,  1.20it/s]
+[32m✓ Downloaded[0m
+  path: /root/hf-cache/hub/models--Qwen--Qwen3-4B-Instruct-2507/snapshots/cdbee75f17c01a7cc42f958dc650907174af0554
++ python -c 'import torch, vllm; print('\''torch'\'', torch.__version__, torch.version.cuda, torch.cuda.device_count()); print('\''vllm'\'', vllm.__version__)'
+torch 2.13.0+cu130 13.0 2
+vllm 0.28.0
+EXIT_CODE=0

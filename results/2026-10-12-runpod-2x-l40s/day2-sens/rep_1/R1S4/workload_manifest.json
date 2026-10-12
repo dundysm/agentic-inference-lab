@@ -1,0 +1,29 @@
+{
+  "scenario": "day2-R1S4",
+  "model": "Qwen/Qwen3-4B-Instruct-2507",
+  "prompt_set_sha256": "c9c7e42687f36aea6cbb9e527664277b0234bd86779d04c000bd6873d188af4e",
+  "route_arm": "R1S4",
+  "session_header": true,
+  "request_worker_id": true,
+  "metrics_endpoints": [
+    "frontend=http://127.0.0.1:8000/metrics",
+    "worker0=http://127.0.0.1:9081/metrics",
+    "worker1=http://127.0.0.1:9082/metrics"
+  ],
+  "sessions": 16,
+  "turns": 12,
+  "lines": 80,
+  "pause_s": 0.25,
+  "pause_max_s": 1.75,
+  "stagger_s": 8.0,
+  "schedule_seed": "day2-sensitivity",
+  "schedule_sha256": "413218f18d024ca663eafa00a17a8a74e0e30253ef77d647597e53ebf9e37aa2",
+  "max_inflight": 8,
+  "session_offset": 0,
+  "system_tag": "",
+  "measured_start_unix": 1791823986.2833636,
+  "measured_end_unix": 1791824011.2006953,
+  "failures": 0,
+  "expected_requests": 192,
+  "workload": "deterministic scripted history; client-throttled closed-loop sessions; not a real agent"
+}
