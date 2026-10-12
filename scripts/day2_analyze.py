@@ -109,7 +109,9 @@ def main() -> None:
     p.add_argument("--slo-ms", type=float, default=3000)
     p.add_argument("--csv", type=Path)
     a = p.parse_args()
-    runs = sorted({Path(x).parent for x in glob.glob(str(a.results / "rep_*" / "R*" / "requests.jsonl"))})
+    # Routing arms are R*, single-worker controls are S*.
+    runs = sorted({Path(x).parent for pat in ("R*", "S*")
+                   for x in glob.glob(str(a.results / "rep_*" / pat / "requests.jsonl"))})
     out = [summarize(d, a.slo_ms) for d in runs]
     for r in out:
         print(json.dumps(r))
