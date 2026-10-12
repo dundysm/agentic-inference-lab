@@ -2,7 +2,7 @@
 
 **Date:** 2026-10-12. **Status:** complete. All times below are UTC.
 
-This is the *process* record: what was planned, what was built, what broke, what was decided and why, and where every artifact lives. For results and interpretation, read [routing-cache-residency-findings.md](routing-cache-residency-findings.md).
+This is the *process* record: what was planned, what was built, what broke, what was decided and why, and where every artifact lives. For results and interpretation, read [routing-findings.md](routing-findings.md).
 
 ---
 
@@ -62,14 +62,14 @@ The guide was checked against the pinned Dynamo v1.5.1 source on GitHub before a
 | Soft affinity may not exist in stable | `--router-session-affinity-mode {hard,soft}` exists in v1.5.1 | Used |
 | Placement must be observed | `nvext.extra_fields=["worker_id"]` returns the serving worker per request (documented) | Used; corroborated by per-worker vLLM counters |
 | Session header | `x-dynamo-session-id` confirmed in source (`HEADER_DYNAMO_SESSION_ID`) | Sent on every turn in every arm |
-| Stock `agg_router.sh` uses `--enforce-eager` and a 0.6B model | Fine for a demo, not for measurement | Own launcher (`scripts/day2_cluster.sh`) with no `--enforce-eager` |
+| Stock `agg_router.sh` uses `--enforce-eager` and a 0.6B model | Fine for a demo, not for measurement | Own launcher (`scripts/routing_cluster.sh`) with no `--enforce-eager` |
 | Arm R3 = KV + hard affinity | Your `docs/distributed-routing.md` defines R3 as **soft** affinity | Main-cohort R3 = soft. The guide's version was later run as R3H in the supplementary cohort |
 
 ---
 
 ## 4. Bring-up problems and fixes (main-cohort pod)
 
-| Symptom | Root cause | Fix (in `scripts/day2_cluster.sh`) |
+| Symptom | Root cause | Fix (in `scripts/routing_cluster.sh`) |
 |---|---|---|
 | Worker 0: `Address already in use` on 8081 | RunPod's nginx inside the pod owns port 8081 | Worker status ports moved to **9081/9082** |
 | Worker 1: free memory 25.6 GiB < 0.92 × 31.4 GiB | **5,691 MiB on GPU 1 belonged to something outside our container** (likely the stuck pod's leftover). vLLM's startup check uses `--gpu-memory-utilization` even when the KV size is explicit | `--gpu-memory-utilization 0.70` on **both** workers. This affects only the startup check; KV stays exactly 32,768 tokens. The asymmetry was recorded as a per-GPU baseline, and utilization was sampled every run |
@@ -88,19 +88,19 @@ The guide was checked against the pinned Dynamo v1.5.1 source on GitHub before a
 | File | Purpose |
 |---|---|
 | `workloads/multi_turn.py` | All new options are opt-in, so the cache-residency baseline behaviour and the prompt digest are unchanged (tested):<br>• `--session-header`: stable `X-Dynamo-Session-ID`<br>• `--request-worker-id`: placement per request<br>• `--route-arm`<br>• `--metrics NAME=URL`: per-endpoint snapshots<br>• response-id capture<br>• `--stagger-s`, `--pause-max`, `--schedule-seed`: seeded sensitivity timing |
-| `scripts/day2_cluster.sh` | Single source of all frontend and worker flags; arms R0, R1, R2, R3, R1S4, R3H, S45, S9; process-group lifecycle; GPU-baseline checks |
-| `scripts/day2_run_matrix.sh` | Seeded arm order per rep and a fresh cluster per run. Records manifests and the instance-id→GPU map, requires warm-up to reach every worker, samples GPU utilization, and snapshots frontend and per-worker metrics |
-| `scripts/day2_analyze.py` | Per-run summary: placement, moves, per-worker reuse and recomputation, latency, balance, utilization |
-| `scripts/day2_evaluate.py`, `scripts/day2_followup_evaluate.py` | Pre-registered hypothesis checks, committed before their data |
-| `scripts/day2_router_diagnosis.py` | Joins debug router cost lines to requests: router belief vs actual reuse per decision |
-| `scripts/day2_plots.py` | Four figures (reuse by turn, resumed TTFT, per-worker prefill, placement grid) and Tables A/B; captions computed from the data; palette validated for colour-vision deficiency |
-| `env/runpod_day2_setup.sh` | the distributed routing study environment install. It ran unmodified on the second pod |
+| `scripts/routing_cluster.sh` | Single source of all frontend and worker flags; arms R0, R1, R2, R3, R1S4, R3H, S45, S9; process-group lifecycle; GPU-baseline checks |
+| `scripts/routing_run_matrix.sh` | Seeded arm order per rep and a fresh cluster per run. Records manifests and the instance-id→GPU map, requires warm-up to reach every worker, samples GPU utilization, and snapshots frontend and per-worker metrics |
+| `scripts/routing_analyze.py` | Per-run summary: placement, moves, per-worker reuse and recomputation, latency, balance, utilization |
+| `scripts/routing_evaluate.py`, `scripts/routing_followup_evaluate.py` | Pre-registered hypothesis checks, committed before their data |
+| `scripts/routing_diagnose.py` | Joins debug router cost lines to requests: router belief vs actual reuse per decision |
+| `scripts/routing_plots.py` | Four figures (reuse by turn, resumed TTFT, per-worker prefill, placement grid) and Tables A/B; captions computed from the data; palette validated for colour-vision deficiency |
+| `env/runpod_routing_setup.sh` | the distributed routing study environment install. It ran unmodified on the second pod |
 | `tests/test_logic.py` | New tests: worker-id parsing, digest independence from routing flags, metric targets, schedule determinism and bounds |
 
 ### Documents
-- [`routing-primary-2026-10-12.md`](routing-primary-2026-10-12.md): H1–H5, committed before the main cohort.
-- [`routing-sensitivity-2026-10-12.md`](routing-sensitivity-2026-10-12.md): S-H1–S-H6 and X-H1–X-H4, committed before the follow-up pod existed.
-- [`routing-cache-residency-findings.md`](routing-cache-residency-findings.md): results, mechanism, wrong predictions, limitations, reproduction.
+- [`routing-primary-2026-10-12.md`](protocols/routing-primary-2026-10-12.md): H1–H5, committed before the main cohort.
+- [`routing-sensitivity-2026-10-12.md`](protocols/routing-sensitivity-2026-10-12.md): S-H1–S-H6 and X-H1–X-H4, committed before the follow-up pod existed.
+- [`routing-findings.md`](routing-findings.md): results, mechanism, wrong predictions, limitations, reproduction.
 - Status lines updated in `README.md` and `docs/distributed-routing.md` (your text otherwise untouched).
 
 ### Data
@@ -145,7 +145,7 @@ The guide was checked against the pinned Dynamo v1.5.1 source on GitHub before a
 
 ## 7. Results in brief
 
-Details, figures and tables are in the [findings](routing-cache-residency-findings.md).
+Details, figures and tables are in the [findings](routing-findings.md).
 
 **Pilot (one rep):** all gates passed. Two predictions were wrong:
 - Round robin did **not** collapse to near-zero reuse.
