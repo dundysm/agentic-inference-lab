@@ -64,19 +64,33 @@ def get_cached_tokens(usage: dict) -> int | None:
     return value if isinstance(value, int) and not isinstance(value, bool) else None
 
 
+def get_worker_id(event: dict) -> int | None:
+    # Dynamo returns the serving worker when the request sets nvext.extra_fields=["worker_id"].
+    worker = (event.get("nvext") or {}).get("worker_id")
+    if isinstance(worker, dict):
+        worker = worker.get("decode_worker_id")
+    return worker if isinstance(worker, int) and not isinstance(worker, bool) else None
+
+
 async def query(client: httpx.AsyncClient, base_url: str, model: str,
-                messages: list[dict[str, str]], sem: asyncio.Semaphore) -> dict:
+                messages: list[dict[str, str]], sem: asyncio.Semaphore,
+                session_id: str | None = None, request_worker_id: bool = False) -> dict:
     body = {"model": model, "messages": messages, "max_tokens": MAX_OUTPUT_TOKENS,
             "temperature": 0.0, "stream": True,
             "stream_options": {"include_usage": True}}
+    if request_worker_id:
+        body["nvext"] = {"extra_fields": ["worker_id"]}
+    headers = {"X-Dynamo-Session-ID": session_id} if session_id else None
     request_ready_unix = time.time()
     async with sem:
         admitted_unix = time.time()
         start_mono = time.perf_counter()
         first_mono = None
         usage: dict = {}
+        worker_id = None
         response_status = None
-        async with client.stream("POST", f"{base_url}/v1/chat/completions", json=body) as response:
+        async with client.stream("POST", f"{base_url}/v1/chat/completions", json=body,
+                                 headers=headers) as response:
             response_status = response.status_code
             response.raise_for_status()
             async for line in response.aiter_lines():
@@ -90,6 +104,8 @@ async def query(client: httpx.AsyncClient, base_url: str, model: str,
                 event = json.loads(payload)
                 if event.get("usage"):
                     usage = event["usage"]
+                if (wid := get_worker_id(event)) is not None:
+                    worker_id = wid
                 for choice in event.get("choices") or []:
                     delta = choice.get("delta") or {}
                     if delta.get("content") and first_mono is None:
@@ -108,14 +124,23 @@ async def query(client: httpx.AsyncClient, base_url: str, model: str,
         "completion_tokens": usage.get("completion_tokens"),
         "cached_tokens": get_cached_tokens(usage),
         "http_status": response_status,
+        "worker_id": worker_id,
         "success": first_mono is not None,
     }
 
 
-async def scrape(client: httpx.AsyncClient, base_url: str, out: Path) -> None:
-    response = await client.get(f"{base_url}/metrics", timeout=30)
+async def scrape(client: httpx.AsyncClient, url: str, out: Path) -> None:
+    response = await client.get(url, timeout=30)
     response.raise_for_status()
     out.write_text(response.text)
+
+
+def metric_targets(args: argparse.Namespace, phase: str) -> list[tuple[str, Path]]:
+    # Default (Day 1): one server, metrics_{phase}.prom. With --metrics name=url, one file per endpoint.
+    if not args.metrics:
+        return [(f"{args.base_url}/metrics", args.out_dir / f"metrics_{phase}.prom")]
+    return [(url, args.out_dir / f"{name}_metrics_{phase}.prom")
+            for name, url in (m.split("=", 1) for m in args.metrics)]
 
 
 async def main() -> None:
@@ -131,9 +156,19 @@ async def main() -> None:
     p.add_argument("--session-offset", type=int, default=0)
     p.add_argument("--system-tag", default="")
     p.add_argument("--out-dir", type=Path, required=True)
+    # Day 2 (Dynamo routing). Off by default, so Day 1 requests are unchanged.
+    p.add_argument("--route-arm", default="")
+    p.add_argument("--session-header", action="store_true",
+                   help="send a stable X-Dynamo-Session-ID per session on every turn")
+    p.add_argument("--request-worker-id", action="store_true",
+                   help="ask Dynamo to report the serving worker (nvext.extra_fields=['worker_id'])")
+    p.add_argument("--metrics", action="append", default=[], metavar="NAME=URL",
+                   help="metrics endpoint to snapshot before/after; repeatable")
     args = p.parse_args()
     if min(args.sessions, args.turns, args.max_inflight, args.lines) < 1:
         p.error("sessions, turns, lines, max-inflight must be positive")
+    if any("=" not in m for m in args.metrics):
+        p.error("--metrics takes NAME=URL")
     args.out_dir.mkdir(parents=True, exist_ok=True)
     sem = asyncio.Semaphore(args.max_inflight)
     write_lock = asyncio.Lock()
@@ -141,18 +176,25 @@ async def main() -> None:
     rows: list[dict] = []
     started = time.time()
     async with httpx.AsyncClient(timeout=httpx.Timeout(600.0), limits=httpx.Limits(max_connections=100)) as client:
-        await scrape(client, args.base_url, args.out_dir / "metrics_before.prom")
+        for url, out in metric_targets(args, "before"):
+            await scrape(client, url, out)
         with (args.out_dir / "requests.jsonl").open("w", buffering=1) as output:
             async def run_session(local_sid: int) -> None:
                 sid = local_sid + args.session_offset
+                session_id = f"ailab-session-{sid:04d}" if args.session_header else None
                 messages = messages_for_session(sid, args.lines, args.system_tag)
                 for turn in range(args.turns):
                     if turn:
                         append_turn(messages, turn)
                     row = {"scenario": args.scenario, "session": sid, "turn": turn,
                            "prompt_set_sha256": digest}
+                    if args.route_arm:
+                        row["route_arm"] = args.route_arm
+                    if session_id:
+                        row["session_id"] = session_id
                     try:
-                        row.update(await query(client, args.base_url, args.model, messages, sem))
+                        row.update(await query(client, args.base_url, args.model, messages, sem,
+                                               session_id, args.request_worker_id))
                     except Exception as exc:
                         row.update({"success": False, "error": f"{type(exc).__name__}: {exc}",
                                     "end_unix": time.time()})
@@ -163,9 +205,12 @@ async def main() -> None:
                     if turn < args.turns - 1:
                         await asyncio.sleep(args.pause)
             await asyncio.gather(*(run_session(s) for s in range(args.sessions)))
-        await scrape(client, args.base_url, args.out_dir / "metrics_after.prom")
+        for url, out in metric_targets(args, "after"):
+            await scrape(client, url, out)
     manifest = {
         "scenario": args.scenario, "model": args.model, "prompt_set_sha256": digest,
+        "route_arm": args.route_arm, "session_header": args.session_header,
+        "request_worker_id": args.request_worker_id, "metrics_endpoints": args.metrics,
         "sessions": args.sessions, "turns": args.turns, "lines": args.lines,
         "pause_s": args.pause, "max_inflight": args.max_inflight,
         "session_offset": args.session_offset, "system_tag": args.system_tag,

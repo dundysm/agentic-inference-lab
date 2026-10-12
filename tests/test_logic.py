@@ -44,6 +44,29 @@ class HarnessTests(unittest.TestCase):
         self.assertIsNone(ana.frac({"cached_tokens": None, "prompt_tokens": 100}))
         self.assertEqual(ana.frac({"cached_tokens": 0, "prompt_tokens": 100}), 0)
 
+    def test_worker_id_parsing(self):
+        self.assertEqual(wl.get_worker_id({"nvext": {"worker_id": {"decode_worker_id": 7}}}), 7)
+        self.assertEqual(wl.get_worker_id({"nvext": {"worker_id": 3}}), 3)
+        self.assertIsNone(wl.get_worker_id({"choices": []}))
+        self.assertIsNone(wl.get_worker_id({"nvext": {"worker_id": {"decode_worker_id": True}}}))
+
+    def test_day2_flags_do_not_change_prompt_digest(self):
+        # Routing metadata travels in headers and nvext, never in the prompt text.
+        base = wl.prompt_set_digest(self.args())
+        day2 = wl.prompt_set_digest(self.args(route_arm="R2", session_header=True,
+                                              request_worker_id=True))
+        self.assertEqual(base, day2)
+
+    def test_metric_targets(self):
+        out = Path("x")
+        day1 = wl.metric_targets(argparse.Namespace(metrics=[], base_url="http://h:8000", out_dir=out), "before")
+        self.assertEqual(day1, [("http://h:8000/metrics", out / "metrics_before.prom")])
+        day2 = wl.metric_targets(argparse.Namespace(
+            metrics=["frontend=http://h:8000/metrics", "worker0=http://h:8081/metrics"],
+            base_url="http://h:8000", out_dir=out), "after")
+        self.assertEqual(day2, [("http://h:8000/metrics", out / "frontend_metrics_after.prom"),
+                                ("http://h:8081/metrics", out / "worker0_metrics_after.prom")])
+
     def test_dry_run_interleaves_budget_pairs_deterministically(self):
         cmd = ["bash", "scripts/run_baseline.sh"]
         env = dict(__import__("os").environ, DRY_RUN="1", REPS="2",
