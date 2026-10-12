@@ -84,8 +84,10 @@ For each five-repetition profile, compute paired per-run differences/ratios rela
 A **strict crossover** requires an alternative policy (R0, R1, R1S4 or R3) in at least four of five repetitions to have:
 
 1. Resumed p95 TTFT **at most 0.90× R2** (at least 10% better).
-2. Workload wall time **no worse than R2**.
-3. Measured average queue time on at least one R2 worker ≥5 ms **or** request-placement skew ≥15 percentage points from an even split.
+2. Workload wall time **at most 1.02× R2** (no more than 2% worse).
+3. Real server-side contention under R2: at least one R2 worker's mean scheduler queue time is ≥5 ms, **or** an R2 worker preempted at least one request.
+
+Rules 2 and 3 are as amended before any measurement; see [Amendment 1](protocols/locality-vs-load-2026-10-12.md#amendment-1-2026-10-12-before-any-pilot-or-main-run). The original rule 3 used request-placement skew ≥15 points, which cannot occur under hard affinity with 16 equal-length sessions. Placement skew and time-weighted in-flight imbalance are still reported as descriptive measures.
 
 That is an operational decision rule, **not** a population-confidence claim. Predeclare any other success test in a separate, prospective protocol; do not move thresholds after measuring.
 

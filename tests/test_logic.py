@@ -124,6 +124,40 @@ class HarnessTests(unittest.TestCase):
         ):
             self.assertIsNotNone(load(ROOT / "scripts" / filename, name))
 
+    def test_inflight_imbalance_is_time_weighted(self):
+        xo = load(ROOT / "scripts" / "analyze_load_crossover.py", "crossover_amend1")
+        wmap = {10: 0, 11: 1}
+        req = lambda w, a, b: {"worker_id": w, "start_unix": a, "end_unix": b}
+        # Perfectly balanced: one request on each worker at all times.
+        self.assertAlmostEqual(xo.inflight_imbalance([req(10, 0, 4), req(11, 0, 4)], wmap), 0.0)
+        # Everything on one worker: maximal imbalance.
+        self.assertAlmostEqual(xo.inflight_imbalance([req(10, 0, 4), req(10, 1, 3)], wmap), 0.5)
+        # Equal request COUNTS per worker but bursty in time: worker 0 alone for 0-2 s,
+        # balanced 2-4 s, worker 1 alone 4-6 s -> (0.5*2 + 0*2 + 0.5*2) / 6.
+        bursty = [req(10, 0, 4), req(11, 2, 6)]
+        self.assertAlmostEqual(xo.inflight_imbalance(bursty, wmap), 2 / 6)
+        # Idle gaps are excluded from the denominator.
+        gap = [req(10, 0, 1), req(11, 5, 6)]
+        self.assertAlmostEqual(xo.inflight_imbalance(gap, wmap), 0.5)
+
+    def test_crossover_gate_and_wall_tolerance(self):
+        xo = load(ROOT / "scripts" / "analyze_load_crossover.py", "crossover_amend1_gate")
+        def cells(r2_queue=0.0, r2_preempt=0, r2_imb=0.25, cand_p95=80.0, cand_wall=101.0):
+            return {"R2": {"queue_mean_ms": r2_queue, "preemptions": r2_preempt, "inflight_imbalance": r2_imb,
+                           "ttft_p95_ms": 100.0, "wall_s": 100.0},
+                    "R1": {"ttft_p95_ms": cand_p95, "wall_s": cand_wall}}
+        # No server-side contention -> never a crossover, however uneven R2's in-flight load looks
+        # (affinity is burstier than round robin even when idle; imbalance is descriptive only).
+        self.assertFalse(xo.crossover_win(cells(), "R1"))
+        self.assertFalse(xo.crossover_win(cells(r2_imb=0.45), "R1"))
+        # Queueing on R2 opens the gate; 1% slower wall is within the 2% tolerance.
+        self.assertTrue(xo.crossover_win(cells(r2_queue=6.0), "R1"))
+        # Any preemption on an R2 worker also opens it.
+        self.assertTrue(xo.crossover_win(cells(r2_preempt=1), "R1"))
+        # More than 2% slower, or under 10% better p95, fails.
+        self.assertFalse(xo.crossover_win(cells(r2_queue=6.0, cand_wall=103.0), "R1"))
+        self.assertFalse(xo.crossover_win(cells(r2_queue=6.0, cand_p95=91.0), "R1"))
+
     def test_crossover_output_cap_changes_digest_only_when_changed(self):
         base = self.args(sessions=16, turns=12, lines=80)
         same = self.args(sessions=16, turns=12, lines=80, max_output_tokens=32,

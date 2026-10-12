@@ -24,6 +24,40 @@ def quantile(samples: list[float], percentile: float) -> float:
     return xs[int((len(xs) - 1) * percentile)]
 
 
+WALL_TOLERANCE = 1.02          # Amendment 1: "non-worse wall time" means <= 2% slower than R2
+QUEUE_GATE_MS = 5.0
+
+
+def inflight_imbalance(rows: list[dict], worker_of: dict[int, int]) -> float:
+    """Time-weighted mean of |share of in-flight requests on worker 0 - 0.5| while any request is in flight.
+
+    A request is in flight from client admission (start_unix) to its last streamed byte (end_unix).
+    0.0 means the two workers always carried equal in-flight load; 0.5 means all in-flight
+    requests were always on one worker. Unlike request-count shares, this captures temporal
+    imbalance, e.g. hot sessions bursting on the worker they are bound to. Descriptive only:
+    affinity is burstier than round robin even without contention (Amendment 1 calibration).
+    """
+    events = []
+    for r in rows:
+        w = worker_of[r["worker_id"]]
+        events.append((r["start_unix"], 0, w, +1))
+        events.append((r["end_unix"], 1, w, -1))
+    events.sort()  # tie order is irrelevant: zero-length segments add nothing to the integral
+    active = [0, 0]
+    weighted = busy = 0.0
+    prev = None
+    for t, _, w, d in events:
+        if prev is not None and t > prev and sum(active) > 0:
+            dt = t - prev
+            weighted += abs(active[0] / sum(active) - 0.5) * dt
+            busy += dt
+        active[w] += d
+        prev = t
+    if busy <= 0:
+        raise ValueError("no in-flight time to measure imbalance over")
+    return weighted / busy
+
+
 def queue_mean_ms(run: Path, worker: int) -> float:
     prefix = f"worker{worker}"
     total = ana.delta(run, prefix, "vllm:request_queue_time_seconds_sum")
@@ -59,6 +93,9 @@ def summarize(run: Path) -> dict:
         durations.append(max(r["end_unix"] for r in session_rows) -
                          min(r["request_ready_unix"] for r in session_rows))
     queue = [queue_mean_ms(run, i) for i in range(2)]
+    preempt = [x["w0_preemptions"], x["w1_preemptions"]]
+    if any(p is None or p < 0 for p in preempt):
+        raise ValueError(f"{run}: invalid/missing preemption counter")
     out = {
         "run": str(run), "rep": m["rep"], "arm": m["arm"],
         "prompt_digest": wm["prompt_set_sha256"], "schedule_digest": wm["schedule_sha256"],
@@ -71,16 +108,17 @@ def summarize(run: Path) -> dict:
         "harness_wait_p95_ms": quantile([r["harness_wait_ms"] for r in rows], .95),
         "session_duration_p95_s": quantile(durations, .95),
         "median_output_tokens": stats.median(r["completion_tokens"] for r in rows),
-        "wall_s": x["wall_s"], "queue_mean_ms": max(queue),
-        "placement_skew": abs(x["w0_requests"] / expected - .5),
+        "wall_s": x["wall_s"], "queue_mean_ms": max(queue), "preemptions": sum(preempt),
+        "placement_skew": abs(x["w0_requests"] / expected - .5),   # descriptive only since Amendment 1
         "switches": x["session_worker_switches"],
         "hot_placement": None,
     }
+    wm_ids = {int(k): v for k, v in json.loads((run / "worker_map.json").read_text()).items()}
+    out["inflight_imbalance"] = inflight_imbalance(rows, wm_ids)
     if m["hot_session_count"]:
         hot = [r for r in rows if r.get("hot_session")]
         if len(hot) != m["hot_session_count"] * m["turns"]:
             raise ValueError(f"{run}: missing hot-session labels")
-        wm_ids = {int(k): v for k, v in json.loads((run / "worker_map.json").read_text()).items()}
         out["hot_placement"] = sum(wm_ids[r["worker_id"]] == 0 for r in hot) / len(hot)
     return out
 
@@ -104,6 +142,24 @@ def study(root: Path, reps: int, arms: tuple[str, ...] = ARMS, profiles: tuple[s
     return report
 
 
+def contention_observed(cells: dict) -> bool:
+    """Amendment 1 gate: hard affinity (R2) must show real server-side contention in this
+    (profile, rep): an R2 worker's mean scheduler queue time is >= 5 ms, or an R2 worker
+    preempted at least one request.
+    """
+    r2 = cells["R2"]
+    return r2["queue_mean_ms"] >= QUEUE_GATE_MS or r2["preemptions"] > 0
+
+
+def crossover_win(cells: dict, candidate: str) -> bool:
+    """One repetition counts toward a crossover when the candidate's resumed p95 TTFT is at least
+    10% better than hard affinity (R2), its wall time is at most 2% worse, and contention was observed."""
+    c, r2 = cells[candidate], cells["R2"]
+    return (c["ttft_p95_ms"] <= 0.9 * r2["ttft_p95_ms"] and
+            c["wall_s"] <= WALL_TOLERANCE * r2["wall_s"] and
+            contention_observed(cells))
+
+
 def paired(values: dict, contender: str, metric: str, baseline: str = "R2") -> list[float]:
     return [arms[contender][metric] / arms[baseline][metric] for _, arms in sorted(values.items())]
 
@@ -124,8 +180,8 @@ def main() -> None:
         "model, host, session transcripts and timing schedule within a repetition.",
         "",
         "| Profile | Policy | Prefill vs affinity | Resumed TTFT p95 (ms) | Wall (s) | "
-        "Queue (ms) | Placement skew | Output tokens median |",
-        "|---|---|---:|---:|---:|---:|---:|---:|",
+        "Queue (ms) | Preemptions | Placement skew | In-flight imbalance | Output tokens median |",
+        "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|",
     ]
     for profile, reps in values.items():
         for arm in ARMS:
@@ -137,20 +193,14 @@ def main() -> None:
                 f"{stats.median(x['ttft_p95_ms'] for x in v):.1f} | "
                 f"{stats.median(x['wall_s'] for x in v):.1f} | "
                 f"{stats.median(x['queue_mean_ms'] for x in v):.2f} | "
+                f"{stats.median(x['preemptions'] for x in v):.0f} | "
                 f"{stats.median(x['placement_skew'] for x in v):.2f} | "
+                f"{stats.median(x['inflight_imbalance'] for x in v):.3f} | "
                 f"{stats.median(x['median_output_tokens'] for x in v):.0f} |"
             )
         if a.reps == 5:
-            # Predeclared crossover: >=4/5 repetitions with >=10% better p95,
-            # non-worse workload time, and observed queueing OR placement skew.
             for candidate in ("R0", "R1", "R1S4", "R3"):
-                wins = sum(
-                    int(cells[candidate]["ttft_p95_ms"] <= .9 * cells["R2"]["ttft_p95_ms"]
-                        and cells[candidate]["wall_s"] <= cells["R2"]["wall_s"]
-                        and (cells["R2"]["queue_mean_ms"] >= 5
-                             or cells["R2"]["placement_skew"] >= .15))
-                    for cells in reps.values()
-                )
+                wins = sum(crossover_win(cells, candidate) for cells in reps.values())
                 lines.append(f"\n{profile}: {candidate} crossover criterion met in **{wins}/5** reps.")
         lines.append("")
     lines.append(
