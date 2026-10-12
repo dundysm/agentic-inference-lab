@@ -54,22 +54,33 @@ def prompt_set_digest(args: argparse.Namespace) -> str:
                 append_turn(messages, turn)
             requests.append(json.loads(json.dumps(messages)))
         transcripts.append({"session": session_id, "requests": requests})
-    payload = {"model": args.model, "max_tokens": MAX_OUTPUT_TOKENS, "transcripts": transcripts}
+    payload = {"model": args.model, "max_tokens": getattr(args, "max_output_tokens", MAX_OUTPUT_TOKENS), "transcripts": transcripts}
     encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()
     return hashlib.sha256(encoded).hexdigest()
 
 
 def timing_schedule(args: argparse.Namespace) -> dict[int, dict]:
     """Seeded per-session start delay and per-turn pauses. With the defaults, every session starts
-    at once and pauses exactly --pause, which is the Day 1 / Day 2 main-cohort timing."""
+    at once and pauses exactly --pause, which is the previous main-cohort timing."""
     schedule = {}
+    hot_count = getattr(args, "hot_session_count", 0)
+    # Select even local session IDs first, then odd ones. The chosen cohort is deterministic.
+    hot_order = list(range(0, args.sessions, 2)) + list(range(1, args.sessions, 2))
+    hot_ids = set(hot_order[:hot_count])
     for local_sid in range(args.sessions):
         sid = local_sid + args.session_offset
         rng = random.Random(f"{args.schedule_seed}-{sid}")
         start = rng.uniform(0, args.stagger_s) if args.stagger_s > 0 else 0.0
         hi = max(args.pause, args.pause_max)
         pauses = [rng.uniform(args.pause, hi) if hi > args.pause else args.pause for _ in range(args.turns - 1)]
+        if hot_count:
+            is_hot = local_sid in hot_ids
+            factor = (getattr(args, "hot_pause_scale", 1.0) if is_hot
+                      else getattr(args, "cold_pause_scale", 1.0))
+            pauses = [p * factor for p in pauses]
         schedule[sid] = {"start_delay_s": round(start, 4), "pauses_s": [round(x, 4) for x in pauses]}
+        if hot_count:
+            schedule[sid]["is_hot"] = is_hot
     return schedule
 
 
@@ -89,8 +100,9 @@ def get_worker_id(event: dict) -> int | None:
 
 async def query(client: httpx.AsyncClient, base_url: str, model: str,
                 messages: list[dict[str, str]], sem: asyncio.Semaphore,
-                session_id: str | None = None, request_worker_id: bool = False) -> dict:
-    body = {"model": model, "messages": messages, "max_tokens": MAX_OUTPUT_TOKENS,
+                session_id: str | None = None, request_worker_id: bool = False,
+                max_output_tokens: int = MAX_OUTPUT_TOKENS) -> dict:
+    body = {"model": model, "messages": messages, "max_tokens": max_output_tokens,
             "temperature": 0.0, "stream": True,
             "stream_options": {"include_usage": True}}
     if request_worker_id:
@@ -154,7 +166,7 @@ async def scrape(client: httpx.AsyncClient, url: str, out: Path) -> None:
 
 
 def metric_targets(args: argparse.Namespace, phase: str) -> list[tuple[str, Path]]:
-    # Default (Day 1): one server, metrics_{phase}.prom. With --metrics name=url, one file per endpoint.
+    # Default (baseline): one server, metrics_{phase}.prom. With --metrics name=url, one file per endpoint.
     if not args.metrics:
         return [(f"{args.base_url}/metrics", args.out_dir / f"metrics_{phase}.prom")]
     return [(url, args.out_dir / f"{name}_metrics_{phase}.prom")
@@ -174,7 +186,7 @@ async def main() -> None:
     p.add_argument("--session-offset", type=int, default=0)
     p.add_argument("--system-tag", default="")
     p.add_argument("--out-dir", type=Path, required=True)
-    # Day 2 (Dynamo routing). Off by default, so Day 1 requests are unchanged.
+    # routing (Dynamo routing). Off by default, so baseline requests are unchanged.
     p.add_argument("--route-arm", default="")
     p.add_argument("--session-header", action="store_true",
                    help="send a stable X-Dynamo-Session-ID per session on every turn")
@@ -182,15 +194,24 @@ async def main() -> None:
                    help="ask Dynamo to report the serving worker (nvext.extra_fields=['worker_id'])")
     p.add_argument("--metrics", action="append", default=[], metavar="NAME=URL",
                    help="metrics endpoint to snapshot before/after; repeatable")
-    # Sensitivity timing (Day 2 guide 8.3). Defaults reproduce the fixed, synchronized schedule.
+    # Sensitivity timing (routing guide 8.3). Defaults reproduce the fixed, synchronized schedule.
     p.add_argument("--stagger-s", type=float, default=0.0,
                    help="each session starts after a seeded uniform delay in [0, STAGGER_S]")
     p.add_argument("--pause-max", type=float, default=0.0,
                    help="if > --pause, each tool pause is seeded uniform in [--pause, PAUSE_MAX]")
-    p.add_argument("--schedule-seed", default="day2-sensitivity")
+    p.add_argument("--schedule-seed", default="day2-sensitivity")  # Historical default retained
+    p.add_argument("--max-output-tokens", type=int, default=MAX_OUTPUT_TOKENS)
+    p.add_argument("--hot-session-count", type=int, default=0,
+                   help="select this many hot sessions in deterministic even-ID-first order")
+    p.add_argument("--hot-pause-scale", type=float, default=1.0)
+    p.add_argument("--cold-pause-scale", type=float, default=1.0)
     args = p.parse_args()
     if min(args.sessions, args.turns, args.max_inflight, args.lines) < 1:
         p.error("sessions, turns, lines, max-inflight must be positive")
+    if not 0 <= args.hot_session_count <= args.sessions:
+        p.error("hot-session-count must be between 0 and sessions")
+    if args.max_output_tokens < 1 or args.hot_pause_scale <= 0 or args.cold_pause_scale <= 0:
+        p.error("output-token cap and pause scale factors must be positive")
     if any("=" not in m for m in args.metrics):
         p.error("--metrics takes NAME=URL")
     args.out_dir.mkdir(parents=True, exist_ok=True)
@@ -216,13 +237,15 @@ async def main() -> None:
                         append_turn(messages, turn)
                     row = {"scenario": args.scenario, "session": sid, "turn": turn,
                            "prompt_set_sha256": digest}
+                    if args.hot_session_count:
+                        row["hot_session"] = schedule[sid]["is_hot"]
                     if args.route_arm:
                         row["route_arm"] = args.route_arm
                     if session_id:
                         row["session_id"] = session_id
                     try:
                         row.update(await query(client, args.base_url, args.model, messages, sem,
-                                               session_id, args.request_worker_id))
+                                               session_id, args.request_worker_id, args.max_output_tokens))
                     except Exception as exc:
                         row.update({"success": False, "error": f"{type(exc).__name__}: {exc}",
                                     "end_unix": time.time()})
@@ -241,6 +264,8 @@ async def main() -> None:
         "request_worker_id": args.request_worker_id, "metrics_endpoints": args.metrics,
         "sessions": args.sessions, "turns": args.turns, "lines": args.lines,
         "pause_s": args.pause, "pause_max_s": args.pause_max, "stagger_s": args.stagger_s,
+        "max_output_tokens": args.max_output_tokens, "hot_session_count": args.hot_session_count,
+        "hot_pause_scale": args.hot_pause_scale, "cold_pause_scale": args.cold_pause_scale,
         "schedule_seed": args.schedule_seed, "schedule_sha256": schedule_digest,
         "max_inflight": args.max_inflight,
         "session_offset": args.session_offset, "system_tag": args.system_tag,
