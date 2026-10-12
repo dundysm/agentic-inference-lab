@@ -115,6 +115,15 @@ class HarnessTests(unittest.TestCase):
         self.assertEqual(out[0]["ttft_median_delta_ms"], -300)
         self.assertEqual(out[1]["computed_prefill_tokens_delta"], -1500)
 
+    def test_renamed_routing_analysis_imports(self):
+        # These used to import sibling files with chronological names.
+        for filename, name in (
+            ("routing_evaluate.py", "routing_evaluate_smoke"),
+            ("routing_followup_evaluate.py", "routing_followup_evaluate_smoke"),
+            ("routing_plots.py", "routing_plots_smoke"),
+        ):
+            self.assertIsNotNone(load(ROOT / "scripts" / filename, name))
+
     def test_crossover_output_cap_changes_digest_only_when_changed(self):
         base = self.args(sessions=16, turns=12, lines=80)
         same = self.args(sessions=16, turns=12, lines=80, max_output_tokens=32,
