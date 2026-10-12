@@ -18,8 +18,8 @@ here = Path(__file__).parent
 def _load(name):
     spec = importlib.util.spec_from_file_location(name, here / f"{name}.py")
     mod = importlib.util.module_from_spec(spec); spec.loader.exec_module(mod); return mod
-ana = _load("day2_analyze")
-ev = _load("day2_evaluate")
+ana = _load("routing_analyze")
+ev = _load("routing_evaluate")
 
 DIGEST = "c9c7e42687f3"
 verdict = lambda ok: "SUPPORTED" if ok else "NOT SUPPORTED"
