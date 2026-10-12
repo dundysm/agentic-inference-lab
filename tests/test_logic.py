@@ -161,7 +161,7 @@ class HarnessTests(unittest.TestCase):
                 "session": 0, "turn": 0, "worker_id": 42, "success": True,
                 "ttft_ms": 10, "user_ttft_ms": 10, "start_unix": 1,
                 "end_unix": 2, "prompt_set_sha256": "test",
-            }) + "\\n")
+            }) + "\n")
             with self.assertRaisesRegex(ValueError, "required prefill counter"):
                 routing.summarize(d, 500)
 
