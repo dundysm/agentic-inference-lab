@@ -26,8 +26,8 @@ Use an on-demand NVIDIA GPU host that supports your selected CUDA and vLLM build
 The exact source model revision is recorded in [env/env.sh](../env/env.sh), and the original CUDA/torchcodec workaround in [env/runpod_setup.sh](../env/runpod_setup.sh). The setup script was consolidated after the original interactive setup and **has not been validated end-to-end as one installer**.
 
 ```bash
-git clone https://github.com/dundysm/agentic-inference-lab.git
-cd agentic-inference-lab
+git clone https://github.com/dundysm/inference-under-pressure.git
+cd inference-under-pressure
 python -m pip install -r requirements.txt
 python -m unittest discover -s tests
 DRY_RUN=1 REPS=2 bash scripts/run_baseline.sh
