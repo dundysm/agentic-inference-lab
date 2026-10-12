@@ -8,7 +8,7 @@ import json
 import statistics as stats
 from pathlib import Path
 
-spec = importlib.util.spec_from_file_location("routing_metrics", Path(__file__).with_name("day2_analyze.py"))
+spec = importlib.util.spec_from_file_location("routing_metrics", Path(__file__).with_name("routing_analyze.py"))
 ana = importlib.util.module_from_spec(spec)
 assert spec.loader is not None
 spec.loader.exec_module(ana)
