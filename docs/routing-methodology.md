@@ -1,6 +1,6 @@
 # Distributed KV-aware request placement
 
-**Status: run on 2026-10-12.** Results, diagnosis and limitations are in [day2-routing-findings.md](day2-routing-findings.md). The design below is the plan as written. Deviations found during bring-up are recorded in the findings and in `scripts/day2_cluster.sh`. In particular, Dynamo 1.5.1 runs with file discovery, a TCP request plane and ZMQ events, so no etcd or NATS is needed.
+**Status: run on 2026-10-12.** Results, diagnosis and limitations are in [routing-findings.md](routing-findings.md). The design below is the plan as written. Deviations found during bring-up are recorded in the findings and in `scripts/day2_cluster.sh`. In particular, Dynamo 1.5.1 runs with file discovery, a TCP request plane and ZMQ events, so no etcd or NATS is needed.
 
 The measured single-worker baseline shows a cache-residency problem under a deterministic, heavily reused multi-turn workload. This study asks whether **request placement across replicas** recovers prefix reuse before modifying engine-side retention policy.
 
@@ -65,4 +65,4 @@ If a strong routing arm preserves most prefixes, identify which locality or load
 
 Useful upstream context: [Dynamo roadmap](https://github.com/ai-dynamo/dynamo/issues/14124), [session-aware prefix indexer](https://github.com/ai-dynamo/dynamo/issues/13279), and [vLLM programmable KV RFC](https://github.com/vllm-project/vllm/issues/57103). These are context and proposals, not evidence of results achieved here.
 
-For baseline evidence see [single-worker findings](findings.md); for existing workload-generation and metric definitions see [benchmark methodology](benchmark-methodology.md).
+For baseline evidence see [single-worker findings](cache-residency-findings.md); for existing workload-generation and metric definitions see [benchmark methodology](benchmark-methodology.md).

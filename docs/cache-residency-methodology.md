@@ -80,4 +80,4 @@ A cache miss with zero reported preemptions is possible: blocks from paused, com
 
 The results are valid for the exact tested configuration, not a generalized agent-workload benchmark. A new host or runtime needs a new calibration. Do not infer per-block eviction decisions without KV event instrumentation; do not call a negative measurement "equivalence" without an appropriately powered equivalence test.
 
-See [full measurements and limitations](findings.md).
+See [full measurements and limitations](cache-residency-findings.md).
