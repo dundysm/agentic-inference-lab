@@ -1,12 +1,12 @@
-# Day 2 findings: two-replica request placement (Dynamo 1.5.1)
+# Distributed routing: experimental findings
 
 **Date:** 2026-10-12. **Status:** complete.
-- **Main cohort:** five pre-registered repetitions on two GPUs ([pre-registration](preregistration-day2-main-2026-10-12.md)).
+- **Main cohort:** five pre-registered repetitions on two GPUs ([pre-registration](routing-primary-2026-10-12.md)).
 - **Diagnostic and exploratory runs:** one and two respectively, outside the cohort and labelled as such.
-- **Pre-registered follow-up cohorts:** sensitivity and supplementary ([pre-registration](preregistration-day2-followup-2026-10-12.md)); see [Follow-up cohorts](#follow-up-cohorts).
+- **Pre-registered follow-up cohorts:** sensitivity and supplementary ([pre-registration](routing-sensitivity-2026-10-12.md)); see [Follow-up cohorts](#follow-up-cohorts).
 
 ## Question
-On the **same two GPUs** with the **same 4.5 GiB KV pool per worker**, how much does the request router change prefix reuse, recomputation, latency and load balance for Day 1's 16-session agent-like workload?
+On the **same two GPUs** with the **same 4.5 GiB KV pool per worker**, how much does the request router change prefix reuse, recomputation, latency and load balance for the cache-residency baseline's 16-session agent-like workload?
 
 ## Answer
 **Placement decides almost everything, and session affinity was the best placement in every regime tested.** The default-weighted KV-aware router recovered **none** of the locality on the synchronized workload and **about half** of it on a staggered, heavier one.
@@ -26,7 +26,7 @@ On the **same two GPUs** with the **same 4.5 GiB KV pool per worker**, how much 
   - Exploratory runs on the synchronized workload: reproduced hard affinity token for token, on both GPU types.
   - Pre-registered sensitivity cohort: cut recompute from 0.51× to **0.26×** round robin, with p95 within 1.09× of affinity. It still recomputed **1.30×** affinity (S-H3 not supported).
 - **Capacity controls:**
-  - One worker with 4.5 GiB reproduces Day 1's total collapse on the Day 2 stack: 0.000 cached, 10.4× recompute.
+  - One worker with 4.5 GiB reproduces the cache-residency baseline's total collapse on the the distributed routing study stack: 0.000 cached, 10.4× recompute.
   - One worker with the pooled 9 GiB reuses exactly as well as two affinity-routed 4.5 GiB workers. The second GPU buys about 12% wall time.
 
 ## Setup
@@ -38,7 +38,7 @@ On the **same two GPUs** with the **same 4.5 GiB KV pool per worker**, how much 
   - `--block-size 64 --max-model-len 8192 --kv-cache-memory-bytes 4831838208` (32,768 tokens each), prefix caching on, KV events on.
   - `PYTHONHASHSEED=0`, `--gpu-memory-utilization 0.70`. This only affects vLLM's startup free-memory check.
   - `VLLM_USE_FLASHINFER_SAMPLER=0`. The FlashInfer sampler cannot JIT-compile for sm_120 on this image. Decoding is greedy either way.
-- **Workload:** Day 1's workload exactly. The prompt digest is `c9c7e42687f3…` in every run.
+- **Workload:** the cache-residency baseline's workload exactly. The prompt digest is `c9c7e42687f3…` in every run.
   - 16 sessions × 12 turns, about 3–3.4K-token prompts, a 0.5 s tool pause, 4 requests in flight, 32 output tokens.
   - A stable `X-Dynamo-Session-ID` is sent on every turn in all arms.
 - **Placement:** recorded per request from Dynamo's `nvext.worker_id`, and mapped to GPUs from each worker's log.
@@ -142,7 +142,7 @@ The workers' own scheduler queue time supports this. `vllm:request_queue_time_se
 | *R2 hard affinity (pilot), for reference* | 0 | 16/16 | 59,196 | 48 ms | 21.8 s |
 
 ## Follow-up cohorts
-Pre-registered in [preregistration-day2-followup-2026-10-12.md](preregistration-day2-followup-2026-10-12.md) before any follow-up run. Both cohorts ran on a **new pod with 2× NVIDIA L40S** (48 GB, driver 580.126.09, CUDA 13.0, no foreign GPU memory), because the RTX PRO 4500 pair was sold out. Everything else was identical:
+Pre-registered in [routing-sensitivity-2026-10-12.md](routing-sensitivity-2026-10-12.md) before any follow-up run. Both cohorts ran on a **new pod with 2× NVIDIA L40S** (48 GB, driver 580.126.09, CUDA 13.0, no foreign GPU memory), because the RTX PRO 4500 pair was sold out. Everything else was identical:
 - the KV budget (4.5 GiB, 32,768 tokens per worker), model, Dynamo/vLLM build and prompts (digest `c9c7e42687f3`);
 - R0–R3 launch arguments, byte-identical to the main cohort.
 
@@ -201,18 +201,18 @@ Same timing as the main cohort. 3 reps × 4 arms.
 | | Claim | Result |
 |---|---|---|
 | X-H1 | The guide's R3 (KV + hard) ≈ R2 | **Supported** (1.000×) |
-| X-H2 | Day 1 collapse reproduces on the Day 2 stack | **Supported** (0.000 cached every rep) |
+| X-H2 | the cache-residency baseline collapse reproduces on the the distributed routing study stack | **Supported** (0.000 cached every rep) |
 | X-H3 | One 9 GiB worker fits the working set | **Supported** (0.982 cached; recompute = R2) |
 | X-H4 | Two GPUs finish sooner than one 9 GiB GPU | **Supported** (21.8 s vs 24.7 s every rep) |
 
 What this adds:
-- **The Day 1 cliff is a property of the KV budget versus the working set, not of vLLM 0.31 or the block size.**
-  - The cached fraction is exactly 0.000 here, where Day 1 had 0.005. With 64-token blocks, the short shared system prompt no longer fills a whole block.
+- **The the cache-residency baseline cliff is a property of the KV budget versus the working set, not of vLLM 0.31 or the block size.**
+  - The cached fraction is exactly 0.000 here, where the cache-residency baseline had 0.005. With 64-token blocks, the short shared system prompt no longer fills a whole block.
 - **Two GPUs at 4.5 GiB with affinity reuse exactly as well as one GPU holding all 9 GiB.** Partitioning the sessions loses nothing; the second GPU buys about 12% wall time.
 - **Without affinity, two 4.5 GiB workers (main cohort R0/R1) do far worse than one 9 GiB worker.** The routing policy decides whether the memory is partitioned usefully.
 
 ## Predictions that were wrong
-- **R0 collapse.** I expected round robin to collapse to Day 1-style near-zero reuse. It did not: about two thirds of resumed turns still hit, because round robin scrambles the strict cyclic order that defeated LRU on Day 1. Its cost showed up as about 4× the recompute and about 6× the p95, not as a near-zero hit rate.
+- **R0 collapse.** I expected round robin to collapse to the cache-residency baseline-style near-zero reuse. It did not: about two thirds of resumed turns still hit, because round robin scrambles the strict cyclic order that defeated LRU on the cache-residency baseline. Its cost showed up as about 4× the recompute and about 6× the p95, not as a near-zero hit rate.
 - **R1 cause.** I attributed R1's moves to eviction or a stale index before the diagnostic run. Both were ruled out; the cause is the cost weighting.
 - **S-H2: R1 stays like round robin.** I expected the default KV router to stay like round robin under a varied schedule. It halved round robin's recompute.
 - **S-H3: the reweighting matches affinity.** I expected prefill-scale 4 to match affinity under the varied schedule, as it did in the synchronized exploratory runs. It recomputed 1.30× affinity.
