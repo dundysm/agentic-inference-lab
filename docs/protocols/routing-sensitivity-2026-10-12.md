@@ -1,6 +1,6 @@
-# Day 2 follow-up pre-registration: sensitivity and supplementary cohorts
+# Preregistered protocol: routing sensitivity and capacity controls
 
-**Written:** 2026-10-12, after the Day 2 main cohort, the diagnostic run and the two exploratory runs ([findings](routing-cache-residency-findings.md)). It was written **before** any follow-up measurement and before the pod for these cohorts was deployed.
+**Written:** 2026-10-12, after the Day 2 main cohort, the diagnostic run and the two exploratory runs ([findings](../routing-findings.md)). It was written **before** any follow-up measurement and before the pod for these cohorts was deployed.
 
 These cohorts finish the remaining GPU items in the Day 2 plan:
 - the guide's section 8.3 sensitivity cohort;
@@ -13,7 +13,7 @@ They are separate cohorts. **Results are compared only within each cohort**, nev
 Everything is as frozen in [the main-cohort pre-registration](routing-primary-2026-10-12.md) unless stated here:
 - **Pod and GPUs:** a new RunPod on-demand 2× RTX PRO 4500 pod, the same type as the main cohort. If only a different GPU is available, the hypotheses still apply but the type is recorded and flagged.
 - **Software:** Dynamo 1.5.1, vLLM 0.28.0, the same model revision, 64-token blocks, 8192 context and 4.5 GiB KV per worker unless stated otherwise.
-- **Arms:** defined in `scripts/day2_cluster.sh` at the commit adding this file.
+- **Arms:** defined in `scripts/routing_cluster.sh` at the commit adding this file.
   - R0–R3 launch byte-identically to the main cohort; this was checked by diffing the generated argv.
   - New arms are `R1S4` (KV router with `--router-prefill-load-scale 4`) and `R3H` (KV router with hard affinity, TTL 300 s).
   - Single-worker arms are `S45` (one worker on GPU 0 with 4.5 GiB KV) and `S9` (one worker on GPU 0 with 9 GiB KV, equal to the two-worker total).
