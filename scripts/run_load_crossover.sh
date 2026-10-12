@@ -65,7 +65,7 @@ for ((rep=1; rep<=REPS; rep++)); do
     STAGGER_S="$STAGGER_S" PAUSE="$PAUSE" PAUSE_MAX="$PAUSE_MAX" \
     HOT_SESSION_COUNT="$HOT_SESSION_COUNT" HOT_PAUSE_SCALE="$HOT_PAUSE_SCALE" \
     COLD_PAUSE_SCALE="$COLD_PAUSE_SCALE" SCHEDULE_SEED="$seed" \
-      bash scripts/day2_run_matrix.sh
+      bash scripts/routing_run_matrix.sh
   done < <(matrix_for_rep "$rep")
 done
 echo "CROSSOVER_${STUDY_PHASE}_DONE"
