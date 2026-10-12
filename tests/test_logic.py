@@ -57,6 +57,25 @@ class HarnessTests(unittest.TestCase):
                                               request_worker_id=True))
         self.assertEqual(base, day2)
 
+    def test_default_schedule_is_fixed_timing(self):
+        sched = wl.timing_schedule(self.args(pause=0.5, stagger_s=0.0, pause_max=0.0, schedule_seed="s"))
+        for entry in sched.values():
+            self.assertEqual(entry["start_delay_s"], 0.0)
+            self.assertEqual(entry["pauses_s"], [0.5, 0.5])
+
+    def test_sensitivity_schedule_is_seeded_and_bounded(self):
+        a = self.args(sessions=16, turns=12, pause=0.25, stagger_s=8.0, pause_max=1.75, schedule_seed="s")
+        one, two = wl.timing_schedule(a), wl.timing_schedule(a)
+        self.assertEqual(one, two)
+        for entry in one.values():
+            self.assertTrue(0 <= entry["start_delay_s"] <= 8.0)
+            self.assertEqual(len(entry["pauses_s"]), 11)
+            self.assertTrue(all(0.25 <= p <= 1.75 for p in entry["pauses_s"]))
+        self.assertNotEqual(one, wl.timing_schedule(self.args(sessions=16, turns=12, pause=0.25,
+                                                              stagger_s=8.0, pause_max=1.75, schedule_seed="t")))
+        # Timing never touches the prompts.
+        self.assertEqual(wl.prompt_set_digest(a), wl.prompt_set_digest(self.args(sessions=16, turns=12)))
+
     def test_metric_targets(self):
         out = Path("x")
         day1 = wl.metric_targets(argparse.Namespace(metrics=[], base_url="http://h:8000", out_dir=out), "before")

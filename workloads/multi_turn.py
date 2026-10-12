@@ -9,6 +9,7 @@ import argparse
 import asyncio
 import hashlib
 import json
+import random
 import time
 from pathlib import Path
 
@@ -56,6 +57,20 @@ def prompt_set_digest(args: argparse.Namespace) -> str:
     payload = {"model": args.model, "max_tokens": MAX_OUTPUT_TOKENS, "transcripts": transcripts}
     encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()
     return hashlib.sha256(encoded).hexdigest()
+
+
+def timing_schedule(args: argparse.Namespace) -> dict[int, dict]:
+    """Seeded per-session start delay and per-turn pauses. With the defaults, every session starts
+    at once and pauses exactly --pause, which is the Day 1 / Day 2 main-cohort timing."""
+    schedule = {}
+    for local_sid in range(args.sessions):
+        sid = local_sid + args.session_offset
+        rng = random.Random(f"{args.schedule_seed}-{sid}")
+        start = rng.uniform(0, args.stagger_s) if args.stagger_s > 0 else 0.0
+        hi = max(args.pause, args.pause_max)
+        pauses = [rng.uniform(args.pause, hi) if hi > args.pause else args.pause for _ in range(args.turns - 1)]
+        schedule[sid] = {"start_delay_s": round(start, 4), "pauses_s": [round(x, 4) for x in pauses]}
+    return schedule
 
 
 def get_cached_tokens(usage: dict) -> int | None:
@@ -167,6 +182,12 @@ async def main() -> None:
                    help="ask Dynamo to report the serving worker (nvext.extra_fields=['worker_id'])")
     p.add_argument("--metrics", action="append", default=[], metavar="NAME=URL",
                    help="metrics endpoint to snapshot before/after; repeatable")
+    # Sensitivity timing (Day 2 guide 8.3). Defaults reproduce the fixed, synchronized schedule.
+    p.add_argument("--stagger-s", type=float, default=0.0,
+                   help="each session starts after a seeded uniform delay in [0, STAGGER_S]")
+    p.add_argument("--pause-max", type=float, default=0.0,
+                   help="if > --pause, each tool pause is seeded uniform in [--pause, PAUSE_MAX]")
+    p.add_argument("--schedule-seed", default="day2-sensitivity")
     args = p.parse_args()
     if min(args.sessions, args.turns, args.max_inflight, args.lines) < 1:
         p.error("sessions, turns, lines, max-inflight must be positive")
@@ -176,6 +197,8 @@ async def main() -> None:
     sem = asyncio.Semaphore(args.max_inflight)
     write_lock = asyncio.Lock()
     digest = prompt_set_digest(args)
+    schedule = timing_schedule(args)
+    schedule_digest = hashlib.sha256(json.dumps(schedule, sort_keys=True).encode()).hexdigest()
     rows: list[dict] = []
     started = time.time()
     async with httpx.AsyncClient(timeout=httpx.Timeout(600.0), limits=httpx.Limits(max_connections=100)) as client:
@@ -186,6 +209,8 @@ async def main() -> None:
                 sid = local_sid + args.session_offset
                 session_id = f"ailab-session-{sid:04d}" if args.session_header else None
                 messages = messages_for_session(sid, args.lines, args.system_tag)
+                if schedule[sid]["start_delay_s"]:
+                    await asyncio.sleep(schedule[sid]["start_delay_s"])
                 for turn in range(args.turns):
                     if turn:
                         append_turn(messages, turn)
@@ -206,7 +231,7 @@ async def main() -> None:
                         output.write(json.dumps(row, separators=(",", ":")) + "\n")
                         output.flush()
                     if turn < args.turns - 1:
-                        await asyncio.sleep(args.pause)
+                        await asyncio.sleep(schedule[sid]["pauses_s"][turn])
             await asyncio.gather(*(run_session(s) for s in range(args.sessions)))
         for url, out in metric_targets(args, "after"):
             await scrape(client, url, out)
@@ -215,7 +240,9 @@ async def main() -> None:
         "route_arm": args.route_arm, "session_header": args.session_header,
         "request_worker_id": args.request_worker_id, "metrics_endpoints": args.metrics,
         "sessions": args.sessions, "turns": args.turns, "lines": args.lines,
-        "pause_s": args.pause, "max_inflight": args.max_inflight,
+        "pause_s": args.pause, "pause_max_s": args.pause_max, "stagger_s": args.stagger_s,
+        "schedule_seed": args.schedule_seed, "schedule_sha256": schedule_digest,
+        "max_inflight": args.max_inflight,
         "session_offset": args.session_offset, "system_tag": args.system_tag,
         "measured_start_unix": started, "measured_end_unix": time.time(),
         "failures": sum(not row.get("success", False) for row in rows),

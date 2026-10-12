@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Day 2: run routing arms R0-R3 on two workers, one fresh cluster per run, seeded order per rep.
+# Day 2: run routing arms (R0-R3, follow-up R1S4/R3H/S45/S9), one fresh cluster per run, seeded order per rep.
 #   COHORT=pilot REPS=1 bash scripts/day2_run_matrix.sh
 # Results go to local disk (RESULTS_ROOT); copy them off the pod after each cohort.
 set -euo pipefail
@@ -13,6 +13,9 @@ cd "$(dirname "$0")/.."
 : "${LINES:=80}"
 : "${PAUSE:=0.5}"
 : "${MAX_INFLIGHT:=4}"
+: "${STAGGER_S:=0}"         # follow-up sensitivity timing; 0/0 = fixed schedule
+: "${PAUSE_MAX:=0}"
+: "${SCHEDULE_SEED:=day2-sensitivity}"
 : "${MODEL:?}" "${MODEL_REVISION:?}"
 source scripts/day2_cluster.sh
 
@@ -48,17 +51,20 @@ json.dump({"cohort": "$COHORT", "rep": $rep, "arm": "$arm", "model": "$MODEL",
   "block_size": int("$BLOCK_SIZE"), "max_model_len": int("$MAX_MODEL_LEN"),
   "gpu_memory_utilization": float("$GPU_MEM_UTIL"), "affinity_ttl_s": int("$AFFINITY_TTL"),
   "sessions": $SESSIONS, "turns": $TURNS, "lines": $LINES, "pause_s": $PAUSE,
-  "max_inflight": $MAX_INFLIGHT, "gpu_baseline_mib": [int(x) for x in "${GPU_BASELINE[*]}".split()],
+  "max_inflight": $MAX_INFLIGHT, "stagger_s": float("$STAGGER_S"), "pause_max_s": float("$PAUSE_MAX"),
+  "schedule_seed": "$SCHEDULE_SEED", "workers": $(arm_workers "$arm"), "kv_cache_memory_bytes_actual": $(arm_kv_bytes "$arm"),
+  "gpu_baseline_mib": [int(x) for x in "${GPU_BASELINE[*]}".split()],
   "vllm_use_flashinfer_sampler": "$VLLM_USE_FLASHINFER_SAMPLER", "pythonhashseed": "$PYTHONHASHSEED",
   "completed": False}, open(sys.argv[1], "w"), indent=2)
 PY
     echo "LAUNCH $COHORT rep=$rep arm=$arm"
     start_cluster "$arm" "$dir"
     wait_cluster_ready "$dir"
-    python - "$dir" <<'PY'
+    python - "$dir" "$CLUSTER_WORKERS" <<'PY'
 import json, re, sys, pathlib
 d = pathlib.Path(sys.argv[1]); m = {}
-for i in (0, 1):
+n = int(sys.argv[2])
+for i in range(n):
     ids = set(re.findall(r"Initializing KvEventPublisher for worker (\d+)", (d / f"worker{i}.log").read_text()))
     if len(ids) != 1: raise SystemExit(f"worker{i}: expected one instance id, found {ids}")
     m[ids.pop()] = i
@@ -68,21 +74,22 @@ PY
     python workloads/multi_turn.py --model "$MODEL" --scenario warmup --sessions 4 --turns 2 --lines 12 \
       --pause 0 --max-inflight 2 --session-offset 9000 --system-tag '[warmup-not-measured]' \
       --request-worker-id --out-dir "$dir/warmup" > "$dir/warmup.log"
-    python - "$dir" <<'PY'
+    python - "$dir" "$CLUSTER_WORKERS" <<'PY'
 import json, sys, pathlib
 d = pathlib.Path(sys.argv[1]); m = json.load(open(d / "worker_map.json"))
 seen = {m.get(str(json.loads(l).get("worker_id"))) for l in open(d / "warmup/requests.jsonl")}
-if seen != {0, 1}: raise SystemExit(f"warm-up reached workers {seen}, not both")
-print("warmup reached both workers")
+if seen != set(range(int(sys.argv[2]))): raise SystemExit(f"warm-up reached workers {seen}, not all")
+print("warmup reached all workers:", sorted(seen))
 PY
+    WORKER_METRICS=()
+    for ((i = 0; i < CLUSTER_WORKERS; i++)); do WORKER_METRICS+=(--metrics "worker$i=http://127.0.0.1:$((SYSTEM_PORT_BASE + i))/metrics"); done
     nvidia-smi --query-gpu=timestamp,index,utilization.gpu,memory.used --format=csv -lms 500 > "$dir/gpu_util.csv" &
     SAMPLER_PID=$!
     python workloads/multi_turn.py --model "$MODEL" --scenario "day2-$arm" --route-arm "$arm" \
       --sessions "$SESSIONS" --turns "$TURNS" --lines "$LINES" --pause "$PAUSE" --max-inflight "$MAX_INFLIGHT" \
       --session-header --request-worker-id \
-      --metrics frontend=http://127.0.0.1:8000/metrics \
-      --metrics worker0=http://127.0.0.1:$SYSTEM_PORT_BASE/metrics \
-      --metrics worker1=http://127.0.0.1:$((SYSTEM_PORT_BASE + 1))/metrics \
+      --stagger-s "$STAGGER_S" --pause-max "$PAUSE_MAX" --schedule-seed "$SCHEDULE_SEED" \
+      --metrics frontend=http://127.0.0.1:8000/metrics "${WORKER_METRICS[@]}" \
       --out-dir "$dir" > "$dir/workload.log"
     kill "$SAMPLER_PID" 2>/dev/null || true; wait "$SAMPLER_PID" 2>/dev/null || true; SAMPLER_PID=""
     stop_cluster
