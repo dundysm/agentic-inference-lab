@@ -14,7 +14,7 @@ The workload is 16 sessions × 12 turns, about 3K-token prefixes and tool pauses
 
 **Motivation from the cache-residency baseline:** a single worker at 4.5 GiB showed total prefix-reuse collapse once 16 paused sessions (about 54K tokens) exceeded the cache, with zero preemptions. the distributed routing study asks whether **placing turns on the right worker** recovers that reuse before touching any engine-side retention policy.
 
-**Definition of done** (from the the distributed routing study guide): a two-worker Dynamo + vLLM deployment, a deterministic workload with stable session IDs, four routing arms, per-worker evidence of placement and cache behaviour, at least 3 valid repetitions, and an honest written conclusion. A speedup was not required.
+**Definition of done** (from the distributed routing study guide): a two-worker Dynamo + vLLM deployment, a deterministic workload with stable session IDs, four routing arms, per-worker evidence of placement and cache behaviour, at least 3 valid repetitions, and an honest written conclusion. A speedup was not required.
 
 ---
 
@@ -180,7 +180,7 @@ Details, figures and tables are in the [findings](routing-findings.md).
 
 **Supplementary cohort** (2× L40S, 3 reps, 12/12 valid): all four hypotheses supported.
 - The guide's R3 equals R2.
-- One 4.5 GiB worker reproduces the cache-residency baseline's collapse on the the distributed routing study stack (0.000 cached, 10.4× recompute).
+- One 4.5 GiB worker reproduces the cache-residency baseline's collapse on the distributed routing study stack (0.000 cached, 10.4× recompute).
 - One 9 GiB worker matches two affinity-routed workers exactly, 13% slower in wall time.
 
 **Bottom line:** session affinity was the best placement in every regime. The default KV router gives up all locality on synchronized sessions and about half on staggered ones, by design of its cost weighting. Reweighting recovers most but not all of the gap.

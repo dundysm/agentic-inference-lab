@@ -26,7 +26,7 @@ On the **same two GPUs** with the **same 4.5 GiB KV pool per worker**, how much 
   - Exploratory runs on the synchronized workload: reproduced hard affinity token for token, on both GPU types.
   - Pre-registered sensitivity cohort: cut recompute from 0.51× to **0.26×** round robin, with p95 within 1.09× of affinity. It still recomputed **1.30×** affinity (S-H3 not supported).
 - **Capacity controls:**
-  - One worker with 4.5 GiB reproduces the cache-residency baseline's total collapse on the the distributed routing study stack: 0.000 cached, 10.4× recompute.
+  - One worker with 4.5 GiB reproduces the cache-residency baseline's total collapse on the distributed routing study stack: 0.000 cached, 10.4× recompute.
   - One worker with the pooled 9 GiB reuses exactly as well as two affinity-routed 4.5 GiB workers. The second GPU buys about 12% wall time.
 
 ## Setup
@@ -201,12 +201,12 @@ Same timing as the main cohort. 3 reps × 4 arms.
 | | Claim | Result |
 |---|---|---|
 | X-H1 | The guide's R3 (KV + hard) ≈ R2 | **Supported** (1.000×) |
-| X-H2 | the cache-residency baseline collapse reproduces on the the distributed routing study stack | **Supported** (0.000 cached every rep) |
+| X-H2 | the cache-residency baseline collapse reproduces on the distributed routing study stack | **Supported** (0.000 cached every rep) |
 | X-H3 | One 9 GiB worker fits the working set | **Supported** (0.982 cached; recompute = R2) |
 | X-H4 | Two GPUs finish sooner than one 9 GiB GPU | **Supported** (21.8 s vs 24.7 s every rep) |
 
 What this adds:
-- **The the cache-residency baseline cliff is a property of the KV budget versus the working set, not of vLLM 0.31 or the block size.**
+- **The cache-residency baseline cliff is a property of the KV budget versus the working set, not of vLLM 0.31 or the block size.**
   - The cached fraction is exactly 0.000 here, where the cache-residency baseline had 0.005. With 64-token blocks, the short shared system prompt no longer fills a whole block.
 - **Two GPUs at 4.5 GiB with affinity reuse exactly as well as one GPU holding all 9 GiB.** Partitioning the sessions loses nothing; the second GPU buys about 12% wall time.
 - **Without affinity, two 4.5 GiB workers (main cohort R0/R1) do far worse than one 9 GiB worker.** The routing policy decides whether the memory is partitioned usefully.

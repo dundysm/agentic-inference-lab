@@ -42,7 +42,7 @@ frontend_args() {
     # Follow-up arms (docs/protocols/routing-sensitivity-2026-10-12.md).
     R1S4) args+=(--router-mode kv --router-prefill-load-scale 4) ;;          # KV router, prefill weighted 4x
     R3H) args+=(--router-mode kv --router-session-affinity-ttl-secs "$AFFINITY_TTL"
-                --router-session-affinity-mode hard) ;;                         # the the distributed routing experiment guide's original R3
+                --router-session-affinity-mode hard) ;;                         # the distributed routing experiment guide's original R3
     S45|S9) args+=(--router-mode round-robin) ;;                                # single worker: nothing to route
     *) echo "unknown arm $arm" >&2; return 1 ;;
   esac

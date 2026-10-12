@@ -26,6 +26,12 @@ jobs:
           python scripts/routing_evaluate.py results/2026-10-12-runpod-2x-rtxpro4500/day2-main > /tmp/routing-primary.txt
           python scripts/routing_followup_evaluate.py sens results/2026-10-12-runpod-2x-l40s/day2-sens > /tmp/routing-sensitivity.txt
           python scripts/routing_followup_evaluate.py supp results/2026-10-12-runpod-2x-l40s/day2-supp > /tmp/routing-capacity.txt
+      - name: Published hypothesis verdicts must reproduce exactly
+        # Any analysis change that alters a published number or verdict fails here.
+        run: |
+          diff -u results/2026-10-12-runpod-2x-rtxpro4500/day2-main/hypotheses.txt /tmp/routing-primary.txt
+          diff -u results/2026-10-12-runpod-2x-l40s/day2-sens/hypotheses.txt /tmp/routing-sensitivity.txt
+          diff -u results/2026-10-12-runpod-2x-l40s/day2-supp/hypotheses.txt /tmp/routing-capacity.txt
       - name: Verify prospective matrix dry run
         run: |
           DRY_RUN=1 STUDY_PHASE=pilot bash scripts/run_load_crossover.sh
