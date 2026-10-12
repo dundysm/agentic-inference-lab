@@ -54,7 +54,7 @@ A supplementary control showed that one 4.5 GiB worker loses reusable prefixes, 
 
 The remaining question is **where session affinity becomes harmful because the preferred worker is genuinely overloaded**. The [load-crossover protocol](docs/locality-vs-load.md) specifies reference, high-concurrency/long-decode, and hot-session-skew profiles, comparing five routing policies on the same GPUs. It includes a shuffled experiment runner, workload fingerprints, strict metric checks and a preregistered crossover criterion.
 
-**Status: implemented for testing; no load-crossover GPU measurements have been collected or claimed.**
+**Status (2026-10-12): no saturation regime reached at the tested settings.** Two valid 15-run pilots, one with stress outputs forced to 512 tokens, never produced contention under hard affinity: R2 worker queue 0.01 ms, 0 preemptions. Per the pre-registered go/no-go rule, the main cohort was not run, and no crossover is demonstrated or refuted. The only measurable queueing came from round robin, whose lost locality recomputed 6.2× the prefill. [Findings →](docs/locality-vs-load-findings.md)
 
 ## Run and verify
 

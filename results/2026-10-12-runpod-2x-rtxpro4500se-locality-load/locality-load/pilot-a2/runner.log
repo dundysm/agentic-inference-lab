@@ -1,0 +1,109 @@
+PILOT_A2_START 2026-10-12T21:16:13Z
+rep=1 profile=reference arm=R0 inflight=4 max_output=32 ignore_eos=0 hot=0 seed=crossover-reference-rep-1
+gpu baseline MiB: 0 0
+LAUNCH locality-load/pilot-a2/reference rep=1 arm=R0
+worker_map {'598154232701234630': 0, '9758364549067651742': 1}
+warmup reached all workers: [0, 1]
+COMPLETED locality-load/pilot-a2/reference rep=1 arm=R0
+COHORT_DONE locality-load/pilot-a2/reference
+rep=1 profile=hot-skew arm=R3 inflight=16 max_output=512 ignore_eos=1 hot=8 seed=crossover-hot-skew-rep-1
+gpu baseline MiB: 0 0
+LAUNCH locality-load/pilot-a2/hot-skew rep=1 arm=R3
+worker_map {'11177316264714793006': 0, '5635801888735352406': 1}
+warmup reached all workers: [0, 1]
+COMPLETED locality-load/pilot-a2/hot-skew rep=1 arm=R3
+COHORT_DONE locality-load/pilot-a2/hot-skew
+rep=1 profile=hot-skew arm=R1S4 inflight=16 max_output=512 ignore_eos=1 hot=8 seed=crossover-hot-skew-rep-1
+gpu baseline MiB: 0 0
+LAUNCH locality-load/pilot-a2/hot-skew rep=1 arm=R1S4
+worker_map {'46476221554359640': 0, '17773100036603222911': 1}
+warmup reached all workers: [0, 1]
+COMPLETED locality-load/pilot-a2/hot-skew rep=1 arm=R1S4
+COHORT_DONE locality-load/pilot-a2/hot-skew
+rep=1 profile=saturation arm=R1 inflight=16 max_output=512 ignore_eos=1 hot=0 seed=crossover-saturation-rep-1
+gpu baseline MiB: 0 0
+LAUNCH locality-load/pilot-a2/saturation rep=1 arm=R1
+worker_map {'14767550854172186876': 0, '4772151286187389678': 1}
+warmup reached all workers: [0, 1]
+COMPLETED locality-load/pilot-a2/saturation rep=1 arm=R1
+COHORT_DONE locality-load/pilot-a2/saturation
+rep=1 profile=saturation arm=R0 inflight=16 max_output=512 ignore_eos=1 hot=0 seed=crossover-saturation-rep-1
+gpu baseline MiB: 0 0
+LAUNCH locality-load/pilot-a2/saturation rep=1 arm=R0
+worker_map {'12758654087815356467': 0, '11233704347565992371': 1}
+warmup reached all workers: [0, 1]
+COMPLETED locality-load/pilot-a2/saturation rep=1 arm=R0
+COHORT_DONE locality-load/pilot-a2/saturation
+rep=1 profile=reference arm=R1 inflight=4 max_output=32 ignore_eos=0 hot=0 seed=crossover-reference-rep-1
+gpu baseline MiB: 0 0
+LAUNCH locality-load/pilot-a2/reference rep=1 arm=R1
+worker_map {'9755093245704589068': 0, '3981144251485897294': 1}
+warmup reached all workers: [0, 1]
+COMPLETED locality-load/pilot-a2/reference rep=1 arm=R1
+COHORT_DONE locality-load/pilot-a2/reference
+rep=1 profile=saturation arm=R1S4 inflight=16 max_output=512 ignore_eos=1 hot=0 seed=crossover-saturation-rep-1
+gpu baseline MiB: 267 3
+LAUNCH locality-load/pilot-a2/saturation rep=1 arm=R1S4
+worker_map {'8084250979557556456': 0, '2309974482707638737': 1}
+warmup reached all workers: [0, 1]
+COMPLETED locality-load/pilot-a2/saturation rep=1 arm=R1S4
+COHORT_DONE locality-load/pilot-a2/saturation
+rep=1 profile=saturation arm=R3 inflight=16 max_output=512 ignore_eos=1 hot=0 seed=crossover-saturation-rep-1
+gpu baseline MiB: 0 0
+LAUNCH locality-load/pilot-a2/saturation rep=1 arm=R3
+worker_map {'9231394418230191204': 0, '6285979484086703008': 1}
+warmup reached all workers: [0, 1]
+COMPLETED locality-load/pilot-a2/saturation rep=1 arm=R3
+COHORT_DONE locality-load/pilot-a2/saturation
+rep=1 profile=reference arm=R1S4 inflight=4 max_output=32 ignore_eos=0 hot=0 seed=crossover-reference-rep-1
+gpu baseline MiB: 0 0
+LAUNCH locality-load/pilot-a2/reference rep=1 arm=R1S4
+worker_map {'9230098882196099115': 0, '6813776924815237117': 1}
+warmup reached all workers: [0, 1]
+COMPLETED locality-load/pilot-a2/reference rep=1 arm=R1S4
+COHORT_DONE locality-load/pilot-a2/reference
+rep=1 profile=saturation arm=R2 inflight=16 max_output=512 ignore_eos=1 hot=0 seed=crossover-saturation-rep-1
+gpu baseline MiB: 0 0
+LAUNCH locality-load/pilot-a2/saturation rep=1 arm=R2
+worker_map {'15303141071904685450': 0, '9090717639038989702': 1}
+warmup reached all workers: [0, 1]
+COMPLETED locality-load/pilot-a2/saturation rep=1 arm=R2
+COHORT_DONE locality-load/pilot-a2/saturation
+rep=1 profile=hot-skew arm=R1 inflight=16 max_output=512 ignore_eos=1 hot=8 seed=crossover-hot-skew-rep-1
+gpu baseline MiB: 0 0
+LAUNCH locality-load/pilot-a2/hot-skew rep=1 arm=R1
+worker_map {'17376280810676580568': 0, '7963856374456169385': 1}
+warmup reached all workers: [0, 1]
+COMPLETED locality-load/pilot-a2/hot-skew rep=1 arm=R1
+COHORT_DONE locality-load/pilot-a2/hot-skew
+rep=1 profile=reference arm=R3 inflight=4 max_output=32 ignore_eos=0 hot=0 seed=crossover-reference-rep-1
+gpu baseline MiB: 0 0
+LAUNCH locality-load/pilot-a2/reference rep=1 arm=R3
+worker_map {'17374108627186409258': 0, '9424005947028367801': 1}
+warmup reached all workers: [0, 1]
+COMPLETED locality-load/pilot-a2/reference rep=1 arm=R3
+COHORT_DONE locality-load/pilot-a2/reference
+rep=1 profile=hot-skew arm=R0 inflight=16 max_output=512 ignore_eos=1 hot=8 seed=crossover-hot-skew-rep-1
+gpu baseline MiB: 0 0
+LAUNCH locality-load/pilot-a2/hot-skew rep=1 arm=R0
+worker_map {'11202244265807644908': 0, '2720620447263657648': 1}
+warmup reached all workers: [0, 1]
+COMPLETED locality-load/pilot-a2/hot-skew rep=1 arm=R0
+COHORT_DONE locality-load/pilot-a2/hot-skew
+rep=1 profile=reference arm=R2 inflight=4 max_output=32 ignore_eos=0 hot=0 seed=crossover-reference-rep-1
+gpu baseline MiB: 0 0
+LAUNCH locality-load/pilot-a2/reference rep=1 arm=R2
+worker_map {'6691348564550652279': 0, '8039703886361295612': 1}
+warmup reached all workers: [0, 1]
+COMPLETED locality-load/pilot-a2/reference rep=1 arm=R2
+COHORT_DONE locality-load/pilot-a2/reference
+rep=1 profile=hot-skew arm=R2 inflight=16 max_output=512 ignore_eos=1 hot=8 seed=crossover-hot-skew-rep-1
+gpu baseline MiB: 0 0
+LAUNCH locality-load/pilot-a2/hot-skew rep=1 arm=R2
+worker_map {'9645725655119941499': 0, '1432912278660638779': 1}
+warmup reached all workers: [0, 1]
+COMPLETED locality-load/pilot-a2/hot-skew rep=1 arm=R2
+COHORT_DONE locality-load/pilot-a2/hot-skew
+CROSSOVER_pilot-a2_DONE
+PILOT_A2_DONE 2026-10-12T21:50:24Z
+EXIT_CODE=0
