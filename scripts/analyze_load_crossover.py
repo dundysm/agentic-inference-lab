@@ -120,7 +120,7 @@ def main() -> None:
     lines = [
         "# Locality versus load — measured cohort",
         "",
-        f"Source: \`{a.root}\`. {a.reps} repetitions; each policy has the same "
+        f"Source: `{a.root}`. {a.reps} repetitions; each policy has the same "
         "model, host, session transcripts and timing schedule within a repetition.",
         "",
         "| Profile | Policy | Prefill vs affinity | Resumed TTFT p95 (ms) | Wall (s) | "
