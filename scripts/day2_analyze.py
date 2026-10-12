@@ -92,13 +92,15 @@ def summarize(d: Path, slo_ms: float) -> dict:
         "prompt_digest": rows[0].get("prompt_set_sha256", "")[:12],
     }
     total = 0.0
-    for i in (0, 1):
+    for i in range(int(man.get("workers", 2))):
         comp = delta(d, f"worker{i}", "vllm:request_prefill_kv_computed_tokens_sum")
+        if comp is None or comp < 0:
+            raise ValueError(f"{d}: missing or negative required prefill counter for worker{i}")
         out[f"w{i}_prefill_computed"] = comp
         out[f"w{i}_hit_tokens"] = delta(d, f"worker{i}", "vllm:prefix_cache_hits_total")
         out[f"w{i}_preemptions"] = delta(d, f"worker{i}", "vllm:num_preemptions_total")
         out[f"gpu{i}_util_mean"] = util.get(i)
-        total += comp or 0.0
+        total += comp
     out["prefill_computed_total"] = total
     return out
 
