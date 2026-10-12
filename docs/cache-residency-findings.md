@@ -43,7 +43,7 @@ The recorded prompt-token range was approximately **2,964–3,405 tokens**; each
 
 The main cohort contains **40 runs**: 2 KV budgets × 4 configurations × 5 repetitions. Per repetition and budget, the four configurations contain 48 + 48 + 192 + 192 = **480 requests**, so there are **4,800 successful main-cohort requests total**. The reported preemption count was zero across the cohort.
 
-The preregistered hypotheses, thresholds and cohort-restart rule are preserved in [the dated preregistration](cache-residency-2026-10-12.md). One attempted cohort aborted after four runs because of write problems on a RunPod network filesystem; the full cohort was restarted on local disk, as specified, and the original partial run is not part of the published observations.
+The preregistered hypotheses, thresholds and cohort-restart rule are preserved in [the dated preregistration](protocols/cache-residency-2026-10-12.md). One attempted cohort aborted after four runs because of write problems on a RunPod network filesystem; the full cohort was restarted on local disk, as specified, and the original partial run is not part of the published observations.
 
 ## Memory-budget scan
 
@@ -91,4 +91,4 @@ python scripts/summarize_ab_pilot.py results/2026-10-12-runpod-a40/ab-pilot
 
 The [main-cohort artifacts](../results/2026-10-12-runpod-a40/main/) retain per-request `requests.jsonl`, before/after Prometheus scrapes, server logs, GPU setup manifests and derived CSV/plots. One-second metric time series were not committed.
 
-See [benchmark methodology](benchmark-methodology.md) for safe reproduction. For an explicitly **unmeasured** multi-replica extension, see [distributed routing study](distributed-routing.md).
+See [benchmark methodology](cache-residency-methodology.md) for safe reproduction. For an explicitly **unmeasured** multi-replica extension, see [distributed routing study](routing-methodology.md).
