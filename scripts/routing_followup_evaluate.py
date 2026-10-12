@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Evaluate the Day 2 follow-up cohorts against docs/preregistration-day2-followup-2026-10-12.md.
+"""Evaluate the the distributed routing experiment follow-up cohorts against docs/protocols/routing-sensitivity-2026-10-12.md.
 
-Usage: python scripts/day2_followup_evaluate.py sens RESULTS_DIR   (hypotheses S-H1..S-H6)
-       python scripts/day2_followup_evaluate.py supp RESULTS_DIR   (hypotheses X-H1..X-H4)
+Usage: python scripts/routing_followup_evaluate.py sens RESULTS_DIR   (hypotheses S-H1..S-H6)
+       python scripts/routing_followup_evaluate.py supp RESULTS_DIR   (hypotheses X-H1..X-H4)
 """
 from __future__ import annotations
 
@@ -18,8 +18,8 @@ here = Path(__file__).parent
 def _load(name):
     spec = importlib.util.spec_from_file_location(name, here / f"{name}.py")
     mod = importlib.util.module_from_spec(spec); spec.loader.exec_module(mod); return mod
-ana = _load("day2_analyze")
-ev = _load("day2_evaluate")
+ana = _load("routing_analyze")
+ev = _load("routing_evaluate")
 
 DIGEST = "c9c7e42687f3"
 verdict = lambda ok: "SUPPORTED" if ok else "NOT SUPPORTED"

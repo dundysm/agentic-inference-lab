@@ -1,6 +1,8 @@
 """CPU-only correctness tests. Does not validate vLLM metrics or GPU runs."""
 import argparse
 import importlib.util
+import json
+import tempfile
 import subprocess
 import unittest
 from pathlib import Path
@@ -17,6 +19,7 @@ def load(path, name):
 
 wl = load(ROOT / "workloads" / "multi_turn.py", "multi_turn")
 ana = load(ROOT / "scripts" / "analyze.py", "analyze")
+routing = load(ROOT / "scripts" / "routing_analyze.py", "routing_analyze")
 
 
 class HarnessTests(unittest.TestCase):
@@ -50,7 +53,7 @@ class HarnessTests(unittest.TestCase):
         self.assertIsNone(wl.get_worker_id({"choices": []}))
         self.assertIsNone(wl.get_worker_id({"nvext": {"worker_id": {"decode_worker_id": True}}}))
 
-    def test_day2_flags_do_not_change_prompt_digest(self):
+    def test_routing_flags_do_not_change_prompt_digest(self):
         # Routing metadata travels in headers and nvext, never in the prompt text.
         base = wl.prompt_set_digest(self.args())
         day2 = wl.prompt_set_digest(self.args(route_arm="R2", session_header=True,
@@ -111,6 +114,65 @@ class HarnessTests(unittest.TestCase):
         self.assertEqual(len(out), 2)
         self.assertEqual(out[0]["ttft_median_delta_ms"], -300)
         self.assertEqual(out[1]["computed_prefill_tokens_delta"], -1500)
+
+    def test_renamed_routing_analysis_imports(self):
+        # These used to import sibling files with chronological names.
+        for filename, name in (
+            ("routing_evaluate.py", "routing_evaluate_smoke"),
+            ("routing_followup_evaluate.py", "routing_followup_evaluate_smoke"),
+            ("routing_plots.py", "routing_plots_smoke"),
+        ):
+            self.assertIsNotNone(load(ROOT / "scripts" / filename, name))
+
+    def test_crossover_output_cap_changes_digest_only_when_changed(self):
+        base = self.args(sessions=16, turns=12, lines=80)
+        same = self.args(sessions=16, turns=12, lines=80, max_output_tokens=32,
+                         hot_session_count=8, hot_pause_scale=0.1, cold_pause_scale=3)
+        other = self.args(sessions=16, turns=12, lines=80, max_output_tokens=256)
+        self.assertEqual(wl.prompt_set_digest(base), wl.prompt_set_digest(same))
+        self.assertNotEqual(wl.prompt_set_digest(base), wl.prompt_set_digest(other))
+
+    def test_hot_cold_timing_is_seeded_without_affecting_baseline(self):
+        args = self.args(sessions=8, pause=1, pause_max=0, stagger_s=0,
+                         schedule_seed="test", hot_session_count=3,
+                         hot_pause_scale=0.1, cold_pause_scale=3)
+        a = wl.timing_schedule(args)
+        self.assertEqual(a, wl.timing_schedule(args))
+        self.assertEqual({sid for sid, v in a.items() if v["is_hot"]}, {0, 2, 4})
+        self.assertEqual(a[0]["pauses_s"], [0.1, 0.1])
+        self.assertEqual(a[1]["pauses_s"], [3.0, 3.0])
+        normal = wl.timing_schedule(self.args(sessions=8, pause=1, pause_max=0,
+                                             stagger_s=0, schedule_seed="test"))
+        self.assertNotIn("is_hot", normal[0])
+        self.assertEqual(normal[0]["pauses_s"], [1, 1])
+
+    def test_crossover_matrix_is_shuffled_and_reproducible(self):
+        import os
+        cmd = ["bash", "scripts/run_load_crossover.sh"]
+        env = dict(os.environ, DRY_RUN="1", STUDY_PHASE="pilot")
+        a = subprocess.check_output(cmd, cwd=ROOT, env=env, text=True)
+        b = subprocess.check_output(cmd, cwd=ROOT, env=env, text=True)
+        self.assertEqual(a, b)
+        rows = [x for x in a.splitlines() if x.startswith("rep=")]
+        self.assertEqual(len(rows), 15)
+        self.assertEqual({(x.split()[1], x.split()[2]) for x in rows},
+                         {(f"profile={p}", f"arm={arm}")
+                          for p in ("reference", "saturation", "hot-skew")
+                          for arm in ("R0", "R1", "R1S4", "R2", "R3")})
+
+    def test_routing_missing_prefill_counter_fails_closed(self):
+        with tempfile.TemporaryDirectory() as td:
+            d = Path(td)
+            (d / "manifest.json").write_text(json.dumps(
+                {"workers": 2, "arm": "R0", "rep": 1, "completed": True}))
+            (d / "worker_map.json").write_text('{"42": 0}')
+            (d / "requests.jsonl").write_text(json.dumps({
+                "session": 0, "turn": 0, "worker_id": 42, "success": True,
+                "ttft_ms": 10, "user_ttft_ms": 10, "start_unix": 1,
+                "end_unix": 2, "prompt_set_sha256": "test",
+            }) + "\n")
+            with self.assertRaisesRegex(ValueError, "required prefill counter"):
+                routing.summarize(d, 500)
 
 
 if __name__ == "__main__":

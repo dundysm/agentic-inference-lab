@@ -1,91 +1,101 @@
 # Inference Under Pressure
 
-**A reproducible performance investigation of KV-cache reuse, memory pressure, and distributed request placement for multi-turn LLM workloads.**
+**Measuring how KV-cache residency, request placement, and serving load affect multi-turn LLM inference.**
 
-[Results](#measured-results) · [Method](docs/benchmark-methodology.md) · [Full findings](docs/findings.md) · [Routing experiment](docs/distributed-routing.md) · [Raw measurements](results/2026-10-12-runpod-a40/main/)
+A real-GPU investigation using **vLLM** and **NVIDIA Dynamo**. Includes deterministic workloads, pinned environments, experimental controls, raw traces, router-decision diagnosis, and independently repeatable analysis. The goal is to understand when cache locality helps—and when a router should trade locality for load balance.
 
-![Serving architecture: measured single-worker experiment and proposed multi-replica study](docs/assets/serving-architecture.svg)
+[Results](#measured-results) · [Routing findings](docs/routing-findings.md) · [Cache residency](docs/cache-residency-findings.md) · [Methodology](docs/routing-methodology.md) · [Engineering notes](docs/engineering-notes.md) · [Load crossover study](docs/locality-vs-load.md)
 
-## The problem
+![Measured single-worker and distributed routing experiment topology](docs/assets/serving-architecture.svg)
 
-Agentic LLM serving alternates long-context inference with tool calls and idle periods. Between turns, a paused session's reusable KV blocks compete with other requests for finite GPU memory. Prefix caching is enabled, but **will the prefix still be there when that session resumes?**
+## The systems question
 
-This project measures that failure mode on an actual serving runtime, then investigates whether cache-aware placement across replicas can mitigate it. The emphasis is **repeatable experiments and actionable systems behavior**, not a new caching algorithm or a claim of production deployment.
+Multi-turn LLM applications alternate inference with tool calls. During idle periods, session-prefix KV blocks compete for finite accelerator memory. With more than one serving replica, an additional decision matters: **which worker should receive the resumed turn?**
+
+This repository separates three factors that are often conflated: (1) GPU cache capacity, (2) session-to-worker placement, and (3) momentary serving load.
 
 ## Measured results
 
-**A40 · vLLM 0.31.0+cu129 · Qwen3-4B-Instruct-2507 · single GPU · 16 synthetic sessions × 12 turns**
+### Cache residency under pressure
 
-![Observed cache reuse transition versus KV budget](docs/assets/cache-reuse-cliff.svg)
+**One NVIDIA A40 · vLLM 0.31.0+cu129 · Qwen3-4B-Instruct-2507 · 16 synthetic sessions × 12 turns**
 
-| Cache-on, 16-session workload | 4.5 GiB KV | 10 GiB KV |
+| Metric, prefix caching enabled | 4.5 GiB KV | 10 GiB KV |
 |:--|--:|--:|
-| Median resumed prompt tokens cached | **0.5%** | **98.9%** |
-| Median resumed first-content-token latency | **581 ms** | **67 ms** |
+| Resumed prompt tokens cached (median) | **0.5%** | **98.9%** |
+| Resumed first-content-token latency (median) | **581 ms** | **67 ms** |
 | Computed prefill tokens per run | **614,668** | **54,956** |
-| Workload wall time | **80.1 s** | **33.7 s** |
-| Cache-off control: resumed latency | 591 ms | 567 ms |
-| Cache-off control: wall time | 80.3 s | 80.4 s |
+| Workload completion time | **80.1 s** | **33.7 s** |
 
-Values are medians over **five repetitions of the same deterministic workload** (for prefill tokens, medians of per-run totals). The 4.5 GiB cache-on result showed negligible useful reuse and **no consistent wall-time advantage** over its cache-off control. The 10 GiB cache-on result showed substantial reuse and shorter latency.
+This sharply varying reuse pattern is specific to the tested cyclic workload, not a universal threshold. Five repetitions per controlled arm/budget produced **40 valid runs and 4,800 successful requests**. [Full controls and uncertainty →](docs/cache-residency-findings.md)
 
-The main cohort has **40 complete runs, 4,800 successful requests, and zero reported preemptions**. The sharp transition is a property of this cyclic synthetic access pattern on one tested configuration—not a universal memory threshold for agents.
+![Measured KV-budget sensitivity](docs/assets/cache-reuse-cliff.svg)
 
-![Resumed-turn cached-token fraction, observed across repetitions](results/2026-10-12-runpod-a40/main/analysis/resumed_cache_fraction_by_turn.png)
+### Distributed KV-aware routing
 
-**Interpretation:** the data are consistent with reusable idle prefixes being evicted as sessions rotate through a working set larger than available KV memory. Block-by-block eviction was **not** directly traced; low cache reuse and no active preemptions are the observed signals. [Methods, controls, uncertainty, and all results →](docs/findings.md)
+**Two RTX PRO 4500 GPUs · Dynamo 1.5.1 / vLLM 0.28.0 · identical 4.5 GiB KV pools per worker**
 
-## Experimental design
+| Routing mode | Recomputed prefill vs round robin | Resumed p95 first-content-token latency |
+|:--|--:|--:|
+| Round robin | 1.00× | ~289 ms |
+| KV-aware, default weights | 0.88× median paired ratio, inconsistent | ~283 ms |
+| Hard session affinity | **0.34×** | **~49 ms** |
+| KV-aware + soft affinity | **0.34×** | **~49 ms** |
 
-![Four-arm prefix caching comparison](docs/assets/experiment-design.svg)
+The main routing cohort contains **20 valid runs / 3,840 successful requests**. A debug-trace join showed the KV router selecting a worker *without* the reusable prefix despite recognizing that another worker held it; its load terms outweighed the locality credit in this workload.
 
-The measured baseline crosses **prefix caching OFF/ON** with **4 versus 16 concurrent sessions**, repeated at two explicit GPU KV-memory budgets. The client controls in-flight requests (2 or 4), sends reproducible session transcripts, and inserts 0.5-second tool-like pauses outside admission. Every arm starts with a fresh server and a separate warm-up namespace.
+A separate **two-L40S sensitivity cohort** with staggered arrivals, variable pauses, and eight in-flight requests changed the answer: default KV routing improved to **0.51×** round robin's recomputed prefill, while a 4× prefill weight reached **0.26×** and hard affinity reached **0.21×**. These are within-cohort comparisons; different GPU types are **never** treated as directly comparable latency baselines.
 
-The follow-up adds **two equivalent vLLM workers behind a Dynamo router** and compares request placement policies at identical total hardware and per-worker cache budgets. **Measured (2× RTX PRO 4500, Dynamo 1.5.1, five pre-registered reps):** session affinity recomputed 0.26–0.36× the prefill of round robin and cut resumed p95 TTFT from about 290 ms to about 48 ms.
-- **Default KV-aware router:** no better than round robin on synchronized sessions, and about half of round robin's recompute under a staggered, 8-in-flight schedule (a pre-registered sensitivity cohort on 2× L40S).
-- **Diagnosis:** debug logs show it moved sessions away from workers it correctly knew held their prefix.
-- **Reweighting:** `--router-prefill-load-scale 4` recovers most but not all of the gap to affinity.
-- **Single-worker controls:** one 9 GiB worker reuses exactly as well as two affinity-routed 4.5 GiB workers, and one 4.5 GiB worker reproduces Day 1's collapse on the Day 2 stack.
+A supplementary control showed that one 4.5 GiB worker loses reusable prefixes, while one 9 GiB worker preserves them about as well as two affinity-routed 4.5 GiB workers. [Full routing evidence, methods and limitations →](docs/routing-findings.md)
 
-[Day 2 findings →](docs/day2-routing-findings.md)
+![Measured routing-policy prefill breakdown](results/2026-10-12-runpod-2x-rtxpro4500/day2-main/analysis/day2_prefill_per_worker.png)
 
-## Reproduce and inspect
+## Current investigation: locality versus load
 
-Inspect the committed results without a GPU:
+The remaining question is **where session affinity becomes harmful because the preferred worker is genuinely overloaded**. The [load-crossover protocol](docs/locality-vs-load.md) specifies reference, high-concurrency/long-decode, and hot-session-skew profiles, comparing five routing policies on the same GPUs. It includes a shuffled experiment runner, workload fingerprints, strict metric checks and a preregistered crossover criterion.
+
+**Status: implemented for testing; no load-crossover GPU measurements have been collected or claimed.**
+
+## Run and verify
+
+Inspect existing evidence on a CPU machine:
 
 ```bash
 python -m pip install -r requirements.txt
 python -m unittest discover -s tests
 python scripts/evaluate_preregistration.py results/2026-10-12-runpod-a40/main
-python scripts/summarize_pilot_scan.py results/2026-10-12-runpod-a40/pilot-scan
+python scripts/routing_evaluate.py results/2026-10-12-runpod-2x-rtxpro4500/day2-main
+python scripts/routing_followup_evaluate.py sens results/2026-10-12-runpod-2x-l40s/day2-sens
+python scripts/routing_followup_evaluate.py supp results/2026-10-12-runpod-2x-l40s/day2-supp
 ```
 
-Preview the experiment schedule, without launching a server:
+Preview the proposed GPU crossover run **without launching a server**:
 
 ```bash
-DRY_RUN=1 REPS=2 bash scripts/run_baseline.sh
+DRY_RUN=1 STUDY_PHASE=pilot bash scripts/run_load_crossover.sh
+DRY_RUN=1 STUDY_PHASE=main bash scripts/run_load_crossover.sh
 ```
 
-For a new GPU run, read the [benchmark methodology](docs/benchmark-methodology.md) and the [recorded RunPod environment](env/runpod_setup.sh). The setup script documents the original machine's CUDA-wheel workarounds; it is **not** a universal, end-to-end-tested installer. Pin the model, runtime, GPU and benchmark parameters before comparing results.
+For live GPU setup, use the [recorded routing environment](env/runpod_routing_setup.sh) as a **host-specific reference** and follow the [load-crossover runbook](docs/locality-vs-load.md). Every real run requires a compatible GPU driver/runtime and a pinned model revision; don't assume the setup works on arbitrary pods.
 
-## Repository map
+## Project layout
 
-| Location | Contents |
-|:--|:--|
-| [`workloads/multi_turn.py`](workloads/multi_turn.py) | Deterministic streaming request generator with timestamps and cached-token accounting |
-| [`scripts/run_baseline.sh`](scripts/run_baseline.sh) | Interleaved cache/budget experiments, server isolation and manifest capture |
-| [`scripts/analyze.py`](scripts/analyze.py) | Request-level, repetition-level and paired comparisons with plots |
-| [`docs/findings.md`](docs/findings.md) | Observations, controls, limitations and causal interpretation |
-| [`docs/preregistration-main-2026-10-12.md`](docs/preregistration-main-2026-10-12.md) | Frozen hypotheses and run protocol before the main experiment |
-| [`results/2026-10-12-runpod-a40/`](results/2026-10-12-runpod-a40/) | Raw request logs, server logs, configurations, Prometheus snapshots and derived artifacts |
-| [`docs/distributed-routing.md`](docs/distributed-routing.md) | Two-replica routing study design and validation gates |
+| Area | Contents |
+|---|---|
+| [`workloads/`](workloads/) | Deterministic multi-turn prompt, session and timing generator |
+| [`scripts/`](scripts/) | Cluster lifecycle, routing matrix, strict analysis, figures and experimental controls |
+| [`docs/cache-residency-findings.md`](docs/cache-residency-findings.md) | Single-worker measurements and caveats |
+| [`docs/routing-findings.md`](docs/routing-findings.md) | Multi-replica policy comparison, router diagnosis and capacity controls |
+| [`docs/engineering-notes.md`](docs/engineering-notes.md) | Reproducibility notes, integration problems and provenance |
+| [`docs/protocols/`](docs/protocols/) | Dated, frozen hypotheses kept as a scientific audit trail |
+| [`results/`](results/) | Untouched historical request logs, manifests, server logs, Prometheus snapshots and plots |
 
-## Scope and integrity
+Historical raw-result directories intentionally retain their original recorded names and commands. That preserves reproducibility rather than rewriting what happened.
 
-- **Measured:** single-replica prefix-cache behavior under deterministic multi-turn pressure on one NVIDIA A40.
-- **Also measured:** two-replica request placement with Dynamo 1.5.1, on 2× RTX PRO 4500 (main cohort) and 2× L40S (sensitivity and single-worker control cohorts) ([Day 2 findings](docs/day2-routing-findings.md)).
-- **Not measured:** live user/agent traces, CPU/NVMe KV offload, multi-node transfers, or an engine-side retention improvement.
-- **Metrics:** client-observed time to first content token is not identical to server-internal TTFT. Client-side admission waiting is reported separately.
-- **Statistics:** repetitions reuse the same workload on the same host; individual turns are dependent observations. No claim of independent workloads or generalizable confidence interval.
+## Upstream and limitations
 
-Built as an open, reproducible systems investigation. Technical feedback and counterexamples are welcome in [Issues](https://github.com/dundysm/inference-under-pressure/issues).
+**NVIDIA Dynamo:** [Issue #16194 — KV-router load/locality tradeoff](https://github.com/ai-dynamo/dynamo/issues/16194). The report includes the failure reproduction, internal cost calculations and sensitivity evidence. It is a measured *workload-dependent tradeoff*, not proof of a universally incorrect router policy.
+
+All reported traffic is synthetic and closed-loop; there are no production agent traces, cluster-wide load tests, multi-node KV transfers, or engine-level retention changes. Client-observed TTFT includes frontend overhead, and the five repetitions are repeated schedules on the same pod—not independent traffic populations. Do not interpret them as statistical generalization beyond this setup.
+
+Feedback, alternative traces and reproducible counterexamples are welcome in [Issues](https://github.com/dundysm/inference-under-pressure/issues).

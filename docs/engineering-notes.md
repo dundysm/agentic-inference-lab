@@ -1,20 +1,20 @@
-# Day 2 work log: two-replica KV-aware routing
+# Engineering notes: distributed inference
 
 **Date:** 2026-10-12. **Status:** complete. All times below are UTC.
 
-This is the *process* record: what was planned, what was built, what broke, what was decided and why, and where every artifact lives. For results and interpretation, read [day2-routing-findings.md](day2-routing-findings.md).
+This is the *process* record: what was planned, what was built, what broke, what was decided and why, and where every artifact lives. For results and interpretation, read [routing-findings.md](routing-findings.md).
 
 ---
 
 ## 1. Goal
 
-**Question:** on the **same two GPUs** with the **same KV budget per worker** (4.5 GiB, 32,768 tokens each), how much does the request router change prefix reuse, recomputation, latency and load balance for Day 1's agent-like workload?
+**Question:** on the **same two GPUs** with the **same KV budget per worker** (4.5 GiB, 32,768 tokens each), how much does the request router change prefix reuse, recomputation, latency and load balance for the cache-residency baseline's agent-like workload?
 
 The workload is 16 sessions × 12 turns, about 3K-token prefixes and tool pauses.
 
-**Motivation from Day 1:** a single worker at 4.5 GiB showed total prefix-reuse collapse once 16 paused sessions (about 54K tokens) exceeded the cache, with zero preemptions. Day 2 asks whether **placing turns on the right worker** recovers that reuse before touching any engine-side retention policy.
+**Motivation from the cache-residency baseline:** a single worker at 4.5 GiB showed total prefix-reuse collapse once 16 paused sessions (about 54K tokens) exceeded the cache, with zero preemptions. the distributed routing study asks whether **placing turns on the right worker** recovers that reuse before touching any engine-side retention policy.
 
-**Definition of done** (from the Day 2 guide): a two-worker Dynamo + vLLM deployment, a deterministic workload with stable session IDs, four routing arms, per-worker evidence of placement and cache behaviour, at least 3 valid repetitions, and an honest written conclusion. A speedup was not required.
+**Definition of done** (from the the distributed routing study guide): a two-worker Dynamo + vLLM deployment, a deterministic workload with stable session IDs, four routing arms, per-worker evidence of placement and cache behaviour, at least 3 valid repetitions, and an honest written conclusion. A speedup was not required.
 
 ---
 
@@ -22,7 +22,7 @@ The workload is 16 sessions × 12 turns, about 3K-token prefixes and tool pauses
 
 | Time (UTC) | Step |
 |---|---|
-| 12:47 | Day 2 guide reviewed against the real Dynamo v1.5.1 source and committed (`ee1a465`); corrections in §3 |
+| 12:47 | the distributed routing study guide reviewed against the real Dynamo v1.5.1 source and committed (`ee1a465`); corrections in §3 |
 | ~13:50 | 2× A40 sold out; 2× RTX PRO 4500 chosen with approval. The first pod sat in "Initializing" with no logs for about 10 min and was terminated (stuck host) |
 | ~14:07 | Second pod `t08nb1xd591jrv` came up (2× RTX PRO 4500, US-KS-2). Lab SSH key added via the Jupyter terminal |
 | 14:12–14:20 | Dynamo 1.5.1 + vLLM 0.28.0 installed with uv; capability check of every frontend and worker flag in the pinned build |
@@ -57,19 +57,19 @@ The guide was checked against the pinned Dynamo v1.5.1 source on GitHub before a
 | Guide said | Reality in v1.5.1 | Action |
 |---|---|---|
 | Start etcd/NATS with `docker compose` | RunPod pods have no docker. v1.5.1 supports `--discovery-backend file`, `--request-plane tcp` and `--event-plane zmq` | No etcd, NATS or docker; a fresh file-discovery directory per run |
-| Use the pinned runtime's vLLM | Dynamo 1.5.1 pins `vllm==0.28.0` and `nixl[cu13]` (a CUDA 13 build) | Required a **CUDA 13 host** (driver ≥580); Day 1's 570 driver could not run it |
-| Put results on `/workspace` | Day 1 lost a cohort to silent write loss on RunPod's network filesystem | Everything on local disk, copied home after each cohort |
+| Use the pinned runtime's vLLM | Dynamo 1.5.1 pins `vllm==0.28.0` and `nixl[cu13]` (a CUDA 13 build) | Required a **CUDA 13 host** (driver ≥580); the cache-residency baseline's 570 driver could not run it |
+| Put results on `/workspace` | the cache-residency baseline lost a cohort to silent write loss on RunPod's network filesystem | Everything on local disk, copied home after each cohort |
 | Soft affinity may not exist in stable | `--router-session-affinity-mode {hard,soft}` exists in v1.5.1 | Used |
 | Placement must be observed | `nvext.extra_fields=["worker_id"]` returns the serving worker per request (documented) | Used; corroborated by per-worker vLLM counters |
 | Session header | `x-dynamo-session-id` confirmed in source (`HEADER_DYNAMO_SESSION_ID`) | Sent on every turn in every arm |
-| Stock `agg_router.sh` uses `--enforce-eager` and a 0.6B model | Fine for a demo, not for measurement | Own launcher (`scripts/day2_cluster.sh`) with no `--enforce-eager` |
+| Stock `agg_router.sh` uses `--enforce-eager` and a 0.6B model | Fine for a demo, not for measurement | Own launcher (`scripts/routing_cluster.sh`) with no `--enforce-eager` |
 | Arm R3 = KV + hard affinity | Your `docs/distributed-routing.md` defines R3 as **soft** affinity | Main-cohort R3 = soft. The guide's version was later run as R3H in the supplementary cohort |
 
 ---
 
 ## 4. Bring-up problems and fixes (main-cohort pod)
 
-| Symptom | Root cause | Fix (in `scripts/day2_cluster.sh`) |
+| Symptom | Root cause | Fix (in `scripts/routing_cluster.sh`) |
 |---|---|---|
 | Worker 0: `Address already in use` on 8081 | RunPod's nginx inside the pod owns port 8081 | Worker status ports moved to **9081/9082** |
 | Worker 1: free memory 25.6 GiB < 0.92 × 31.4 GiB | **5,691 MiB on GPU 1 belonged to something outside our container** (likely the stuck pod's leftover). vLLM's startup check uses `--gpu-memory-utilization` even when the KV size is explicit | `--gpu-memory-utilization 0.70` on **both** workers. This affects only the startup check; KV stays exactly 32,768 tokens. The asymmetry was recorded as a per-GPU baseline, and utilization was sampled every run |
@@ -87,20 +87,20 @@ The guide was checked against the pinned Dynamo v1.5.1 source on GitHub before a
 
 | File | Purpose |
 |---|---|
-| `workloads/multi_turn.py` | All new options are opt-in, so Day 1 behaviour and the prompt digest are unchanged (tested):<br>• `--session-header`: stable `X-Dynamo-Session-ID`<br>• `--request-worker-id`: placement per request<br>• `--route-arm`<br>• `--metrics NAME=URL`: per-endpoint snapshots<br>• response-id capture<br>• `--stagger-s`, `--pause-max`, `--schedule-seed`: seeded sensitivity timing |
-| `scripts/day2_cluster.sh` | Single source of all frontend and worker flags; arms R0, R1, R2, R3, R1S4, R3H, S45, S9; process-group lifecycle; GPU-baseline checks |
-| `scripts/day2_run_matrix.sh` | Seeded arm order per rep and a fresh cluster per run. Records manifests and the instance-id→GPU map, requires warm-up to reach every worker, samples GPU utilization, and snapshots frontend and per-worker metrics |
-| `scripts/day2_analyze.py` | Per-run summary: placement, moves, per-worker reuse and recomputation, latency, balance, utilization |
-| `scripts/day2_evaluate.py`, `scripts/day2_followup_evaluate.py` | Pre-registered hypothesis checks, committed before their data |
-| `scripts/day2_router_diagnosis.py` | Joins debug router cost lines to requests: router belief vs actual reuse per decision |
-| `scripts/day2_plots.py` | Four figures (reuse by turn, resumed TTFT, per-worker prefill, placement grid) and Tables A/B; captions computed from the data; palette validated for colour-vision deficiency |
-| `env/runpod_day2_setup.sh` | Day 2 environment install. It ran unmodified on the second pod |
+| `workloads/multi_turn.py` | All new options are opt-in, so the cache-residency baseline behaviour and the prompt digest are unchanged (tested):<br>• `--session-header`: stable `X-Dynamo-Session-ID`<br>• `--request-worker-id`: placement per request<br>• `--route-arm`<br>• `--metrics NAME=URL`: per-endpoint snapshots<br>• response-id capture<br>• `--stagger-s`, `--pause-max`, `--schedule-seed`: seeded sensitivity timing |
+| `scripts/routing_cluster.sh` | Single source of all frontend and worker flags; arms R0, R1, R2, R3, R1S4, R3H, S45, S9; process-group lifecycle; GPU-baseline checks |
+| `scripts/routing_run_matrix.sh` | Seeded arm order per rep and a fresh cluster per run. Records manifests and the instance-id→GPU map, requires warm-up to reach every worker, samples GPU utilization, and snapshots frontend and per-worker metrics |
+| `scripts/routing_analyze.py` | Per-run summary: placement, moves, per-worker reuse and recomputation, latency, balance, utilization |
+| `scripts/routing_evaluate.py`, `scripts/routing_followup_evaluate.py` | Pre-registered hypothesis checks, committed before their data |
+| `scripts/routing_diagnose.py` | Joins debug router cost lines to requests: router belief vs actual reuse per decision |
+| `scripts/routing_plots.py` | Four figures (reuse by turn, resumed TTFT, per-worker prefill, placement grid) and Tables A/B; captions computed from the data; palette validated for colour-vision deficiency |
+| `env/runpod_routing_setup.sh` | the distributed routing study environment install. It ran unmodified on the second pod |
 | `tests/test_logic.py` | New tests: worker-id parsing, digest independence from routing flags, metric targets, schedule determinism and bounds |
 
 ### Documents
-- [`preregistration-day2-main-2026-10-12.md`](preregistration-day2-main-2026-10-12.md): H1–H5, committed before the main cohort.
-- [`preregistration-day2-followup-2026-10-12.md`](preregistration-day2-followup-2026-10-12.md): S-H1–S-H6 and X-H1–X-H4, committed before the follow-up pod existed.
-- [`day2-routing-findings.md`](day2-routing-findings.md): results, mechanism, wrong predictions, limitations, reproduction.
+- [`routing-primary-2026-10-12.md`](protocols/routing-primary-2026-10-12.md): H1–H5, committed before the main cohort.
+- [`routing-sensitivity-2026-10-12.md`](protocols/routing-sensitivity-2026-10-12.md): S-H1–S-H6 and X-H1–X-H4, committed before the follow-up pod existed.
+- [`routing-findings.md`](routing-findings.md): results, mechanism, wrong predictions, limitations, reproduction.
 - Status lines updated in `README.md` and `docs/distributed-routing.md` (your text otherwise untouched).
 
 ### Data
@@ -133,7 +133,7 @@ The guide was checked against the pinned Dynamo v1.5.1 source on GitHub before a
 **Held constant everywhere:**
 - Model `Qwen/Qwen3-4B-Instruct-2507` at revision `cdbee75f…` (model and tokenizer).
 - 64-token blocks, 8192 context, prefix caching, KV events, `PYTHONHASHSEED=0`.
-- Prompt digest `c9c7e42687f3…`, identical to Day 1's 16-session arms.
+- Prompt digest `c9c7e42687f3…`, identical to the cache-residency baseline's 16-session arms.
 
 **Timing:**
 - **Main and supplementary:** synchronized starts, 0.5 s pauses, 4 in flight.
@@ -145,7 +145,7 @@ The guide was checked against the pinned Dynamo v1.5.1 source on GitHub before a
 
 ## 7. Results in brief
 
-Details, figures and tables are in the [findings](day2-routing-findings.md).
+Details, figures and tables are in the [findings](routing-findings.md).
 
 **Pilot (one rep):** all gates passed. Two predictions were wrong:
 - Round robin did **not** collapse to near-zero reuse.
@@ -180,7 +180,7 @@ Details, figures and tables are in the [findings](day2-routing-findings.md).
 
 **Supplementary cohort** (2× L40S, 3 reps, 12/12 valid): all four hypotheses supported.
 - The guide's R3 equals R2.
-- One 4.5 GiB worker reproduces Day 1's collapse on the Day 2 stack (0.000 cached, 10.4× recompute).
+- One 4.5 GiB worker reproduces the cache-residency baseline's collapse on the the distributed routing study stack (0.000 cached, 10.4× recompute).
 - One 9 GiB worker matches two affinity-routed workers exactly, 13% slower in wall time.
 
 **Bottom line:** session affinity was the best placement in every regime. The default KV router gives up all locality on synchronized sessions and about half on staggered ones, by design of its cost weighting. Reweighting recovers most but not all of the gap.
@@ -206,7 +206,7 @@ Details, figures and tables are in the [findings](day2-routing-findings.md).
 | (stuck, terminated after ~10 min) | 2× RTX PRO 4500 | never started its container | ~$0.25 |
 | `t08nb1xd591jrv` | 2× RTX PRO 4500 Blackwell SE, $1.45/hr | bring-up, pilot, main cohort, diagnostic, exploratory | ~$2.00 |
 | `pa78lsi4duh10l` | 2× L40S, $2.19/hr | smoke, sensitivity, supplementary | ~$1.80 |
-| **Day 2 total** | | | **~$4** |
+| **the distributed routing study total** | | | **~$4** |
 
 All pods were terminated, and their SSH aliases were removed from `~/.ssh/config`. The lab key `~/.ssh/id_ed25519_runpod_lab` is kept for future pods.
 

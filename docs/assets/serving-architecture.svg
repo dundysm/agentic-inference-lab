@@ -1,15 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1120" height="390" viewBox="0 0 1120 390" role="img" aria-labelledby="title desc">
-<title id="title">Measured and proposed agent inference serving architectures</title>
-<desc id="desc">At left a measured single-worker vLLM setup; at right a proposed Dynamo router with two separate vLLM workers, each with a 4.5 GiB GPU KV cache. Proposed system has no measured routing results yet.</desc>
+<title id="title">Measured single-worker and distributed inference architectures</title>
+<desc id="desc">At left the measured A40 single-worker vLLM experiment; at right the measured Dynamo routing experiment with two GPU workers, each reserving 4.5 GiB of KV memory. Different GPU hardware was used across experimental cohorts.</desc>
 <rect width="1120" height="390" rx="18" fill="#0b1220"/>
 <text x="38" y="42" font-family="Arial,Helvetica,sans-serif" font-size="24" font-weight="700" fill="#f1f5f9">Where does the next agent turn land?</text>
 <text x="38" y="65" font-family="Arial,Helvetica,sans-serif" font-size="14" fill="#94a3b8">KV retention within a worker  /  KV-aware placement across workers</text>
 <rect x="32" y="91" width="480" height="265" rx="15" fill="#111c2d" stroke="#344258"/>
-<rect x="546" y="91" width="542" height="265" rx="15" fill="#111c2d" stroke="#344258" stroke-dasharray="6 5"/>
+<rect x="546" y="91" width="542" height="265" rx="15" fill="#111c2d" stroke="#344258" />
 <rect x="52" y="109" width="98" height="23" rx="11" fill="#115e59"/>
 <text x="101" y="125" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="11" font-weight="700" fill="#ecfdf5">MEASURED</text>
 <rect x="566" y="109" width="98" height="23" rx="11" fill="#334155"/>
-<text x="615" y="125" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="11" font-weight="700" fill="#e2e8f0">PROPOSED</text>
+<text x="615" y="125" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="11" font-weight="700" fill="#e2e8f0">MEASURED</text>
 <rect x="152" y="147" width="230" height="46" rx="9" fill="#27354b" stroke="#61738d"/>
 <text x="267" y="165" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="14" font-weight="700" fill="#f1f5f9">16 scripted sessions</text>
 <text x="267" y="181" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="12" fill="#cbd5e1">12 turns · 0.5s tool pauses</text>
@@ -32,5 +32,5 @@
 <text x="690" y="316" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="12" fill="#a7f3d0">GPU 1 · 4.5 GiB KV</text>
 <text x="941" y="294" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="14" font-weight="700" fill="#f0fdfa">vLLM worker B</text>
 <text x="941" y="316" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="12" fill="#a7f3d0">GPU 2 · 4.5 GiB KV</text>
-<text x="560" y="377" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="12" fill="#94a3b8">Dashed boundary = planned study, not measured routing performance</text>
+<text x="560" y="377" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="12" fill="#94a3b8">Both environments measured separately; hardware differs across cohorts</text>
 </svg>

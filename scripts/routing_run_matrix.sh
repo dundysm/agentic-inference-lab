@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
-# Day 2: run routing arms (R0-R3, follow-up R1S4/R3H/S45/S9), one fresh cluster per run, seeded order per rep.
-#   COHORT=pilot REPS=1 bash scripts/day2_run_matrix.sh
+# Routing: run routing arms (R0-R3, follow-up R1S4/R3H/S45/S9), one fresh cluster per run, seeded order per rep.
+#   COHORT=pilot REPS=1 bash scripts/routing_run_matrix.sh
 # Results go to local disk (RESULTS_ROOT); copy them off the pod after each cohort.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 : "${COHORT:?set COHORT (e.g. pilot, main)}"
 : "${REPS:=1}"
+: "${REP_START:=1}"
 : "${ARMS:=R0 R1 R2 R3}"
 : "${RESULTS_ROOT:=/root/results/day2}"
 : "${SESSIONS:=16}"
@@ -16,8 +17,12 @@ cd "$(dirname "$0")/.."
 : "${STAGGER_S:=0}"         # follow-up sensitivity timing; 0/0 = fixed schedule
 : "${PAUSE_MAX:=0}"
 : "${SCHEDULE_SEED:=day2-sensitivity}"
+: "${MAX_OUTPUT_TOKENS:=32}"
+: "${HOT_SESSION_COUNT:=0}"
+: "${HOT_PAUSE_SCALE:=1}"
+: "${COLD_PAUSE_SCALE:=1}"
 : "${MODEL:?}" "${MODEL_REVISION:?}"
-source scripts/day2_cluster.sh
+source scripts/routing_cluster.sh
 
 schedule() {
   python - "$1" $ARMS <<'PY'
@@ -28,7 +33,7 @@ print(" ".join(arms))
 PY
 }
 if [[ "${DRY_RUN:-0}" == 1 ]]; then
-  for ((rep=1; rep<=REPS; rep++)); do echo "rep=$rep $(schedule "$rep")"; done; exit 0
+  for ((rep=REP_START; rep<=REPS; rep++)); do echo "rep=$rep $(schedule "$rep")"; done; exit 0
 fi
 
 curl -fs --max-time 2 http://127.0.0.1:8000/v1/models >/dev/null 2>&1 && { echo "port 8000 already serving; stop it first" >&2; exit 1; }
@@ -36,7 +41,7 @@ record_gpu_baseline
 echo "gpu baseline MiB: ${GPU_BASELINE[*]}"
 trap 'stop_cluster || true; kill "${SAMPLER_PID:-}" 2>/dev/null || true' EXIT
 
-for ((rep=1; rep<=REPS; rep++)); do
+for ((rep=REP_START; rep<=REPS; rep++)); do
   for arm in $(schedule "$rep"); do
     dir="$RESULTS_ROOT/$COHORT/rep_$rep/$arm"
     [[ -e "$dir/requests.jsonl" ]] && { echo "existing data in $dir; refusing to overwrite" >&2; exit 1; }
@@ -51,7 +56,9 @@ json.dump({"cohort": "$COHORT", "rep": $rep, "arm": "$arm", "model": "$MODEL",
   "block_size": int("$BLOCK_SIZE"), "max_model_len": int("$MAX_MODEL_LEN"),
   "gpu_memory_utilization": float("$GPU_MEM_UTIL"), "affinity_ttl_s": int("$AFFINITY_TTL"),
   "sessions": $SESSIONS, "turns": $TURNS, "lines": $LINES, "pause_s": $PAUSE,
-  "max_inflight": $MAX_INFLIGHT, "stagger_s": float("$STAGGER_S"), "pause_max_s": float("$PAUSE_MAX"),
+  "max_inflight": $MAX_INFLIGHT, "max_output_tokens": int("$MAX_OUTPUT_TOKENS"),
+  "hot_session_count": int("$HOT_SESSION_COUNT"), "hot_pause_scale": float("$HOT_PAUSE_SCALE"),
+  "cold_pause_scale": float("$COLD_PAUSE_SCALE"), "stagger_s": float("$STAGGER_S"), "pause_max_s": float("$PAUSE_MAX"),
   "schedule_seed": "$SCHEDULE_SEED", "workers": $(arm_workers "$arm"), "kv_cache_memory_bytes_actual": $(arm_kv_bytes "$arm"),
   "gpu_baseline_mib": [int(x) for x in "${GPU_BASELINE[*]}".split()],
   "vllm_use_flashinfer_sampler": "$VLLM_USE_FLASHINFER_SAMPLER", "pythonhashseed": "$PYTHONHASHSEED",
@@ -85,10 +92,12 @@ PY
     for ((i = 0; i < CLUSTER_WORKERS; i++)); do WORKER_METRICS+=(--metrics "worker$i=http://127.0.0.1:$((SYSTEM_PORT_BASE + i))/metrics"); done
     nvidia-smi --query-gpu=timestamp,index,utilization.gpu,memory.used --format=csv -lms 500 > "$dir/gpu_util.csv" &
     SAMPLER_PID=$!
-    python workloads/multi_turn.py --model "$MODEL" --scenario "day2-$arm" --route-arm "$arm" \
+    python workloads/multi_turn.py --model "$MODEL" --scenario "routing-$arm" --route-arm "$arm" \
       --sessions "$SESSIONS" --turns "$TURNS" --lines "$LINES" --pause "$PAUSE" --max-inflight "$MAX_INFLIGHT" \
       --session-header --request-worker-id \
       --stagger-s "$STAGGER_S" --pause-max "$PAUSE_MAX" --schedule-seed "$SCHEDULE_SEED" \
+      --max-output-tokens "$MAX_OUTPUT_TOKENS" --hot-session-count "$HOT_SESSION_COUNT" \
+      --hot-pause-scale "$HOT_PAUSE_SCALE" --cold-pause-scale "$COLD_PAUSE_SCALE" \
       --metrics frontend=http://127.0.0.1:8000/metrics "${WORKER_METRICS[@]}" \
       --out-dir "$dir" > "$dir/workload.log"
     kill "$SAMPLER_PID" 2>/dev/null || true; wait "$SAMPLER_PID" 2>/dev/null || true; SAMPLER_PID=""

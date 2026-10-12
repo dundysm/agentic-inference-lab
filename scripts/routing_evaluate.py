@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Evaluate a Day 2 cohort against docs/preregistration-day2-main-2026-10-12.md (H1-H5).
+"""Evaluate a the distributed routing experiment cohort against docs/protocols/routing-primary-2026-10-12.md (H1-H5).
 
-Usage: python scripts/day2_evaluate.py RESULTS_DIR   (holds rep_*/R*/ run directories)
+Usage: python scripts/routing_evaluate.py RESULTS_DIR   (holds rep_*/R*/ run directories)
 """
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ import sys
 from collections import defaultdict
 from pathlib import Path
 
-spec = importlib.util.spec_from_file_location("day2_analyze", Path(__file__).with_name("day2_analyze.py"))
+spec = importlib.util.spec_from_file_location("day2_analyze", Path(__file__).with_name("routing_analyze.py"))
 ana = importlib.util.module_from_spec(spec); spec.loader.exec_module(ana)
 
 DIGEST = "c9c7e42687f3"

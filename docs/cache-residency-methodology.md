@@ -48,7 +48,7 @@ Before running a long sweep, ensure the endpoint returns health, captures the fi
 1. **Choose a safe KV budget.** The pool must fit at least one full model-context allocation required by the pinned runtime. Record actual KV blocks/tokens reported at startup; don't assume identical capacity from GiB across models or GPUs.
 2. **Run a short sanity pilot.** Check that cold turns begin without measured-prefix warm-up contamination and that cache-on low-concurrency turns reuse their session prefixes.
 3. **Run an exploratory budget scan.** For the pressured cache-on arm C, test several budgets before fixing the final study arms. Make the exploratory/pilot origin of budget selection explicit.
-4. **Freeze the planned comparison** before the main cohort. The original study's frozen protocol is in [preregistration-main-2026-10-12.md](preregistration-main-2026-10-12.md).
+4. **Freeze the planned comparison** before the main cohort. The original study's frozen protocol is in [preregistration-main-2026-10-12.md](protocols/cache-residency-2026-10-12.md).
 5. **Interleave arms and budgets** within each repetition. Restart the server between runs, wait for the GPU to return close to its initial memory baseline, and use a disjoint warm-up session namespace.
 6. **Store raw evidence first:** request JSONL, server log, startup KV allocation, environment freeze, Prometheus before/after snapshots and a model-revision lock.
 
@@ -80,4 +80,4 @@ A cache miss with zero reported preemptions is possible: blocks from paused, com
 
 The results are valid for the exact tested configuration, not a generalized agent-workload benchmark. A new host or runtime needs a new calibration. Do not infer per-block eviction decisions without KV event instrumentation; do not call a negative measurement "equivalence" without an appropriately powered equivalence test.
 
-See [full measurements and limitations](findings.md).
+See [full measurements and limitations](cache-residency-findings.md).
