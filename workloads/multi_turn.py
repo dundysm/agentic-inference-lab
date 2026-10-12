@@ -88,6 +88,7 @@ async def query(client: httpx.AsyncClient, base_url: str, model: str,
         first_mono = None
         usage: dict = {}
         worker_id = None
+        response_id = None
         response_status = None
         async with client.stream("POST", f"{base_url}/v1/chat/completions", json=body,
                                  headers=headers) as response:
@@ -106,6 +107,7 @@ async def query(client: httpx.AsyncClient, base_url: str, model: str,
                     usage = event["usage"]
                 if (wid := get_worker_id(event)) is not None:
                     worker_id = wid
+                response_id = response_id or event.get("id")
                 for choice in event.get("choices") or []:
                     delta = choice.get("delta") or {}
                     if delta.get("content") and first_mono is None:
@@ -125,6 +127,7 @@ async def query(client: httpx.AsyncClient, base_url: str, model: str,
         "cached_tokens": get_cached_tokens(usage),
         "http_status": response_status,
         "worker_id": worker_id,
+        "response_id": response_id,
         "success": first_mono is not None,
     }
 
