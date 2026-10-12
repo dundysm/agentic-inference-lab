@@ -10,5 +10,7 @@ hf-cache/
 .cache/
 .env
 .env.*
-results/
 *.log
+!results/**/*.log
+results/**/metric_series/
+results/**/*.tgz
