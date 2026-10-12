@@ -1,0 +1,188 @@
+SCAN_START 2026-10-12T08:26:42Z
+model=Qwen/Qwen3-4B-Instruct-2507
+revision=cdbee75f17c01a7cc42f958dc650907174af0554
+LAUNCH 4831838208 rep=1 arm=C dir=/workspace/results/pilot/4831838208/rep_1/C
+{
+  "scenario": "warmup",
+  "model": "Qwen/Qwen3-4B-Instruct-2507",
+  "prompt_set_sha256": "e1dc196471f502a20bcb54619a9169f9c49292eeb871787dd5b705eeadd3ff79",
+  "sessions": 1,
+  "turns": 2,
+  "lines": 12,
+  "pause_s": 0.0,
+  "max_inflight": 1,
+  "session_offset": 9000,
+  "system_tag": "[warmup-not-measured]",
+  "measured_start_unix": 1791793670.9256828,
+  "measured_end_unix": 1791793672.205656,
+  "failures": 0,
+  "expected_requests": 2,
+  "workload": "deterministic scripted history; client-throttled closed-loop sessions; not a real agent"
+}
+{
+  "scenario": "C",
+  "model": "Qwen/Qwen3-4B-Instruct-2507",
+  "prompt_set_sha256": "c9c7e42687f36aea6cbb9e527664277b0234bd86779d04c000bd6873d188af4e",
+  "sessions": 16,
+  "turns": 12,
+  "lines": 80,
+  "pause_s": 0.5,
+  "max_inflight": 4,
+  "session_offset": 0,
+  "system_tag": "",
+  "measured_start_unix": 1791793672.5635781,
+  "measured_end_unix": 1791793752.5320039,
+  "failures": 0,
+  "expected_requests": 192,
+  "workload": "deterministic scripted history; client-throttled closed-loop sessions; not a real agent"
+}
+COMPLETED 4831838208 rep=1 arm=C
+LAUNCH 3221225472 rep=1 arm=C dir=/workspace/results/pilot/3221225472/rep_1/C
+{
+  "scenario": "warmup",
+  "model": "Qwen/Qwen3-4B-Instruct-2507",
+  "prompt_set_sha256": "e1dc196471f502a20bcb54619a9169f9c49292eeb871787dd5b705eeadd3ff79",
+  "sessions": 1,
+  "turns": 2,
+  "lines": 12,
+  "pause_s": 0.0,
+  "max_inflight": 1,
+  "session_offset": 9000,
+  "system_tag": "[warmup-not-measured]",
+  "measured_start_unix": 1791793822.805895,
+  "measured_end_unix": 1791793824.0554035,
+  "failures": 0,
+  "expected_requests": 2,
+  "workload": "deterministic scripted history; client-throttled closed-loop sessions; not a real agent"
+}
+{
+  "scenario": "C",
+  "model": "Qwen/Qwen3-4B-Instruct-2507",
+  "prompt_set_sha256": "c9c7e42687f36aea6cbb9e527664277b0234bd86779d04c000bd6873d188af4e",
+  "sessions": 16,
+  "turns": 12,
+  "lines": 80,
+  "pause_s": 0.5,
+  "max_inflight": 4,
+  "session_offset": 0,
+  "system_tag": "",
+  "measured_start_unix": 1791793824.3959298,
+  "measured_end_unix": 1791793904.9853265,
+  "failures": 0,
+  "expected_requests": 192,
+  "workload": "deterministic scripted history; client-throttled closed-loop sessions; not a real agent"
+}
+COMPLETED 3221225472 rep=1 arm=C
+LAUNCH 2684354560 rep=1 arm=C dir=/workspace/results/pilot/2684354560/rep_1/C
+{
+  "scenario": "warmup",
+  "model": "Qwen/Qwen3-4B-Instruct-2507",
+  "prompt_set_sha256": "e1dc196471f502a20bcb54619a9169f9c49292eeb871787dd5b705eeadd3ff79",
+  "sessions": 1,
+  "turns": 2,
+  "lines": 12,
+  "pause_s": 0.0,
+  "max_inflight": 1,
+  "session_offset": 9000,
+  "system_tag": "[warmup-not-measured]",
+  "measured_start_unix": 1791793961.4247885,
+  "measured_end_unix": 1791793962.6937926,
+  "failures": 0,
+  "expected_requests": 2,
+  "workload": "deterministic scripted history; client-throttled closed-loop sessions; not a real agent"
+}
+{
+  "scenario": "C",
+  "model": "Qwen/Qwen3-4B-Instruct-2507",
+  "prompt_set_sha256": "c9c7e42687f36aea6cbb9e527664277b0234bd86779d04c000bd6873d188af4e",
+  "sessions": 16,
+  "turns": 12,
+  "lines": 80,
+  "pause_s": 0.5,
+  "max_inflight": 4,
+  "session_offset": 0,
+  "system_tag": "",
+  "measured_start_unix": 1791793962.9448748,
+  "measured_end_unix": 1791794043.511639,
+  "failures": 0,
+  "expected_requests": 192,
+  "workload": "deterministic scripted history; client-throttled closed-loop sessions; not a real agent"
+}
+COMPLETED 2684354560 rep=1 arm=C
+LAUNCH 6442450944 rep=1 arm=C dir=/workspace/results/pilot/6442450944/rep_1/C
+{
+  "scenario": "warmup",
+  "model": "Qwen/Qwen3-4B-Instruct-2507",
+  "prompt_set_sha256": "e1dc196471f502a20bcb54619a9169f9c49292eeb871787dd5b705eeadd3ff79",
+  "sessions": 1,
+  "turns": 2,
+  "lines": 12,
+  "pause_s": 0.0,
+  "max_inflight": 1,
+  "session_offset": 9000,
+  "system_tag": "[warmup-not-measured]",
+  "measured_start_unix": 1791794099.3482394,
+  "measured_end_unix": 1791794100.596289,
+  "failures": 0,
+  "expected_requests": 2,
+  "workload": "deterministic scripted history; client-throttled closed-loop sessions; not a real agent"
+}
+{
+  "scenario": "C",
+  "model": "Qwen/Qwen3-4B-Instruct-2507",
+  "prompt_set_sha256": "c9c7e42687f36aea6cbb9e527664277b0234bd86779d04c000bd6873d188af4e",
+  "sessions": 16,
+  "turns": 12,
+  "lines": 80,
+  "pause_s": 0.5,
+  "max_inflight": 4,
+  "session_offset": 0,
+  "system_tag": "",
+  "measured_start_unix": 1791794100.9030375,
+  "measured_end_unix": 1791794181.9774373,
+  "failures": 0,
+  "expected_requests": 192,
+  "workload": "deterministic scripted history; client-throttled closed-loop sessions; not a real agent"
+}
+COMPLETED 6442450944 rep=1 arm=C
+SCAN_DONE 2026-10-12T08:36:23Z
+model=Qwen/Qwen3-4B-Instruct-2507
+revision=cdbee75f17c01a7cc42f958dc650907174af0554
+LAUNCH 8589934592 rep=1 arm=C dir=/workspace/results/pilot-8g/8589934592/rep_1/C
+{
+  "scenario": "warmup",
+  "model": "Qwen/Qwen3-4B-Instruct-2507",
+  "prompt_set_sha256": "e1dc196471f502a20bcb54619a9169f9c49292eeb871787dd5b705eeadd3ff79",
+  "sessions": 1,
+  "turns": 2,
+  "lines": 12,
+  "pause_s": 0.0,
+  "max_inflight": 1,
+  "session_offset": 9000,
+  "system_tag": "[warmup-not-measured]",
+  "measured_start_unix": 1791794238.2801304,
+  "measured_end_unix": 1791794239.5798342,
+  "failures": 0,
+  "expected_requests": 2,
+  "workload": "deterministic scripted history; client-throttled closed-loop sessions; not a real agent"
+}
+{
+  "scenario": "C",
+  "model": "Qwen/Qwen3-4B-Instruct-2507",
+  "prompt_set_sha256": "c9c7e42687f36aea6cbb9e527664277b0234bd86779d04c000bd6873d188af4e",
+  "sessions": 16,
+  "turns": 12,
+  "lines": 80,
+  "pause_s": 0.5,
+  "max_inflight": 4,
+  "session_offset": 0,
+  "system_tag": "",
+  "measured_start_unix": 1791794239.8765316,
+  "measured_end_unix": 1791794274.0697393,
+  "failures": 0,
+  "expected_requests": 192,
+  "workload": "deterministic scripted history; client-throttled closed-loop sessions; not a real agent"
+}
+COMPLETED 8589934592 rep=1 arm=C
+ALL_DONE 2026-10-12T08:37:55Z
+EXIT_CODE=0

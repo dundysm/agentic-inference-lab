@@ -1,0 +1,17 @@
+{
+  "scenario": "smoke",
+  "model": "Qwen/Qwen3-4B-Instruct-2507",
+  "prompt_set_sha256": "fddcfaaee4d3c282e46a931742039544b13d173c8eb1c0da462a456ea675b658",
+  "sessions": 2,
+  "turns": 3,
+  "lines": 40,
+  "pause_s": 0.3,
+  "max_inflight": 2,
+  "session_offset": 0,
+  "system_tag": "",
+  "measured_start_unix": 1791793558.5304823,
+  "measured_end_unix": 1791793561.2302992,
+  "failures": 0,
+  "expected_requests": 6,
+  "workload": "deterministic scripted history; client-throttled closed-loop sessions; not a real agent"
+}

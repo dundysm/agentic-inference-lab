@@ -1,0 +1,17 @@
+{
+  "scenario": "B",
+  "model": "Qwen/Qwen3-4B-Instruct-2507",
+  "prompt_set_sha256": "7472bddd1b9e4842af5ced8c69d9790db0e5d6eeba03312f4c609151720d89ec",
+  "sessions": 4,
+  "turns": 12,
+  "lines": 80,
+  "pause_s": 0.5,
+  "max_inflight": 2,
+  "session_offset": 0,
+  "system_tag": "",
+  "measured_start_unix": 1791801945.7998416,
+  "measured_end_unix": 1791801961.2814462,
+  "failures": 0,
+  "expected_requests": 48,
+  "workload": "deterministic scripted history; client-throttled closed-loop sessions; not a real agent"
+}

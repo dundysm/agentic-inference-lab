@@ -1,0 +1,17 @@
+{
+  "model": "Qwen/Qwen3-4B-Instruct-2507",
+  "model_revision": "cdbee75f17c01a7cc42f958dc650907174af0554",
+  "tokenizer_revision": "cdbee75f17c01a7cc42f958dc650907174af0554",
+  "kv_cache_memory_bytes": 10737418240,
+  "prefix_cache_enabled": false,
+  "max_model_len": 8192,
+  "sessions": 16,
+  "max_inflight": 4,
+  "turns": 12,
+  "lines": 80,
+  "pause_seconds": 0.5,
+  "rep": 2,
+  "baseline_gpu_mib": 0,
+  "run_validated_on_gpu": false,
+  "run_completed_without_exception": true
+}

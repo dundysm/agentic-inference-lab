@@ -1,0 +1,26 @@
+runs=40  all_ok=True  all_completed=True  total_preemptions=0  failed_requests=0
+prompt_set_sha256 arm A: ['7472bddd1b9e']
+prompt_set_sha256 arm B: ['7472bddd1b9e']
+prompt_set_sha256 arm C: ['c9c7e42687f3']
+prompt_set_sha256 arm D: ['c9c7e42687f3']
+
+Per-arm, median [min, max] across 5 reps of the per-run medians:
+GiB  arm   cachedFrac              resumedTTFT_ms        userTTFT_ms              prefill_computed            wall_s
+ 4.5  A    0.000 [0.000, 0.000]       331 [329, 347]         965 [961, 988]      153216 [153216, 153216]    25.8 [25.7, 26.0]
+ 4.5  B    0.989 [0.989, 0.989]          56 [56, 75]         168 [168, 205]         13664 [13648, 13664]    15.2 [15.0, 15.4]
+ 4.5  C    0.005 [0.005, 0.005]       581 [459, 599]      5132 [5112, 5187]      614668 [614668, 614668]    80.1 [79.7, 80.5]
+ 4.5  D    0.000 [0.000, 0.000]       591 [461, 611]      5119 [5109, 5178]      617724 [617724, 617724]    80.3 [79.8, 80.8]
+10.0  A    0.000 [0.000, 0.000]       333 [331, 350]        967 [960, 1006]      153216 [153216, 153216]    25.8 [25.7, 26.2]
+10.0  B    0.989 [0.989, 0.989]          56 [56, 75]         169 [168, 207]         13648 [13648, 13664]    15.0 [14.9, 15.6]
+10.0  C    0.989 [0.989, 0.989]          67 [64, 75]      1608 [1603, 1613]         54956 [54956, 55004]    33.7 [33.6, 34.4]
+10.0  D    0.000 [0.000, 0.000]       567 [458, 599]      5139 [5111, 5208]      617724 [617724, 617724]    80.4 [79.7, 80.4]
+
+Paired ON/OFF per repetition (ratio of resumed TTFT medians; wall ratio):
+ 4.5 GiB B/A: TTFT ratio ['0.22', '0.17', '0.17', '0.17', '0.17']  wall ratio ['0.59', '0.59', '0.59', '0.59', '0.58']  prefill ratio ['0.09', '0.09', '0.09', '0.09', '0.09']
+ 4.5 GiB C/D: TTFT ratio ['0.96', '0.82', '1.00', '0.98', '1.02']  wall ratio ['1.00', '1.00', '1.00', '1.00', '1.00']  prefill ratio ['1.00', '1.00', '1.00', '1.00', '1.00']
+10.0 GiB B/A: TTFT ratio ['0.23', '0.16', '0.17', '0.17', '0.17']  wall ratio ['0.61', '0.57', '0.59', '0.58', '0.58']  prefill ratio ['0.09', '0.09', '0.09', '0.09', '0.09']
+10.0 GiB C/D: TTFT ratio ['0.13', '0.13', '0.11', '0.14', '0.15']  wall ratio ['0.43', '0.43', '0.42', '0.42', '0.42']  prefill ratio ['0.09', '0.09', '0.09', '0.09', '0.09']
+
+H1 (B<A TTFT & prefill, both budgets, every rep): SUPPORTED
+H2 (4.5GiB: C frac<0.05 every rep, median C/D TTFT within +-10%): SUPPORTED  (median C/D-1 = -0.022, per rep ['-0.036', '-0.180', '-0.003', '-0.022', '+0.020'])
+H3 (10GiB: C frac>0.9 every rep, median C/D TTFT<0.5, C wall<D every rep): SUPPORTED
