@@ -80,6 +80,8 @@ def summarize(run: Path) -> dict:
     for field in ("schedule_sha256", "prompt_set_sha256"):
         if not wm.get(field):
             raise ValueError(f"{run}: missing {field}")
+    if wm.get("ignore_eos") and any(r.get("completion_tokens") != wm["max_output_tokens"] for r in rows):
+        raise ValueError(f"{run}: ignore_eos run with responses shorter than the cap (Amendment 2)")
     if m["workers"] != 2:
         raise ValueError(f"{run}: expected exactly two workers")
     if any(r.get("ttft_ms") is None or r.get("user_ttft_ms") is None or
