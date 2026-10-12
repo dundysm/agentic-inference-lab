@@ -1,6 +1,6 @@
 # Distributed KV-aware request placement
 
-**Status: planned experiment — no multi-replica benchmark results are published in this repository.**
+**Status: run on 2026-10-12.** Results, diagnosis and limitations are in [day2-routing-findings.md](day2-routing-findings.md). The design below is the plan as written. Deviations found during bring-up are recorded in the findings and in `scripts/day2_cluster.sh`. In particular, Dynamo 1.5.1 runs with file discovery, a TCP request plane and ZMQ events, so no etcd or NATS is needed.
 
 The measured single-worker baseline shows a cache-residency problem under a deterministic, heavily reused multi-turn workload. This study asks whether **request placement across replicas** recovers prefix reuse before modifying engine-side retention policy.
 

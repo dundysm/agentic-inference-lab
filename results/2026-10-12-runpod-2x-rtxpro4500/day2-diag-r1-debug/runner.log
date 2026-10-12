@@ -1,0 +1,7 @@
+gpu baseline MiB: 0 5691
+LAUNCH diag-r1-debug rep=1 arm=R1
+worker_map {'5060789035259643742': 0, '752773572076150939': 1}
+warmup reached both workers
+COMPLETED diag-r1-debug rep=1 arm=R1
+COHORT_DONE diag-r1-debug
+EXIT_CODE=0

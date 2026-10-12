@@ -1,0 +1,83 @@
+gpu baseline MiB: 0 5691
+LAUNCH main rep=1 arm=R2
+worker_map {'882917166954817981': 0, '11216530243475015465': 1}
+warmup reached both workers
+COMPLETED main rep=1 arm=R2
+LAUNCH main rep=1 arm=R1
+worker_map {'3151844303177809368': 0, '9910834944603071002': 1}
+warmup reached both workers
+COMPLETED main rep=1 arm=R1
+LAUNCH main rep=1 arm=R3
+worker_map {'15162483764249609120': 0, '6175645391872064737': 1}
+warmup reached both workers
+COMPLETED main rep=1 arm=R3
+LAUNCH main rep=1 arm=R0
+worker_map {'7751250206469242469': 0, '6890798556626299677': 1}
+warmup reached both workers
+COMPLETED main rep=1 arm=R0
+LAUNCH main rep=2 arm=R0
+worker_map {'14840629433526631229': 0, '9563116828291483852': 1}
+warmup reached both workers
+COMPLETED main rep=2 arm=R0
+LAUNCH main rep=2 arm=R3
+worker_map {'18173904348917557257': 0, '11371807533818870782': 1}
+warmup reached both workers
+COMPLETED main rep=2 arm=R3
+LAUNCH main rep=2 arm=R2
+worker_map {'743025149178769860': 0, '7978083652447952067': 1}
+warmup reached both workers
+COMPLETED main rep=2 arm=R2
+LAUNCH main rep=2 arm=R1
+worker_map {'6303169055558850836': 0, '14335042872577538218': 1}
+warmup reached both workers
+COMPLETED main rep=2 arm=R1
+LAUNCH main rep=3 arm=R2
+worker_map {'1349462249778023106': 0, '5387929880700432392': 1}
+warmup reached both workers
+COMPLETED main rep=3 arm=R2
+LAUNCH main rep=3 arm=R0
+worker_map {'14683518390381834938': 0, '2735417332781734411': 1}
+warmup reached both workers
+COMPLETED main rep=3 arm=R0
+LAUNCH main rep=3 arm=R3
+worker_map {'14575369536952560756': 0, '7200878617658693918': 1}
+warmup reached both workers
+COMPLETED main rep=3 arm=R3
+LAUNCH main rep=3 arm=R1
+worker_map {'10473074463749699806': 0, '17005317737435499559': 1}
+warmup reached both workers
+COMPLETED main rep=3 arm=R1
+LAUNCH main rep=4 arm=R3
+worker_map {'503923872481005910': 0, '18009313437918477385': 1}
+warmup reached both workers
+COMPLETED main rep=4 arm=R3
+LAUNCH main rep=4 arm=R1
+worker_map {'4138035417192062676': 0, '2434715599300024407': 1}
+warmup reached both workers
+COMPLETED main rep=4 arm=R1
+LAUNCH main rep=4 arm=R0
+worker_map {'11177664938341229823': 0, '16176355957761905053': 1}
+warmup reached both workers
+COMPLETED main rep=4 arm=R0
+LAUNCH main rep=4 arm=R2
+worker_map {'8017047384782276475': 0, '13261998281969214662': 1}
+warmup reached both workers
+COMPLETED main rep=4 arm=R2
+LAUNCH main rep=5 arm=R1
+worker_map {'2110967321820548254': 0, '8580763945716397298': 1}
+warmup reached both workers
+COMPLETED main rep=5 arm=R1
+LAUNCH main rep=5 arm=R0
+worker_map {'2361394177697053181': 0, '8621536479306581452': 1}
+warmup reached both workers
+COMPLETED main rep=5 arm=R0
+LAUNCH main rep=5 arm=R3
+worker_map {'11325149636491550144': 0, '4779302355429453020': 1}
+warmup reached both workers
+COMPLETED main rep=5 arm=R3
+LAUNCH main rep=5 arm=R2
+worker_map {'12069163114645430509': 0, '12451380756736608384': 1}
+warmup reached both workers
+COMPLETED main rep=5 arm=R2
+COHORT_DONE main
+EXIT_CODE=0

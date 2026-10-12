@@ -1,0 +1,14 @@
+gpu baseline MiB: 0 5691
+LAUNCH explore-r1-prefill-scale-2 rep=1 arm=R1
+worker_map {'8990404862962328587': 0, '14352563988077670459': 1}
+warmup reached both workers
+COMPLETED explore-r1-prefill-scale-2 rep=1 arm=R1
+COHORT_DONE explore-r1-prefill-scale-2
+gpu baseline MiB: 0 5691
+LAUNCH explore-r1-prefill-scale-4 rep=1 arm=R1
+worker_map {'10058250535005125975': 0, '8201040400216090349': 1}
+warmup reached both workers
+COMPLETED explore-r1-prefill-scale-4 rep=1 arm=R1
+COHORT_DONE explore-r1-prefill-scale-4
+EXPLORE_DONE
+EXIT_CODE=0

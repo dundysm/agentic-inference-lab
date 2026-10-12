@@ -1,0 +1,21 @@
+{
+  "scenario": "warmup",
+  "model": "Qwen/Qwen3-4B-Instruct-2507",
+  "prompt_set_sha256": "8fde2f664050eeb1c5bde6d66ae349c443f4507c73e6b9cf46ad9e7ca6596864",
+  "route_arm": "",
+  "session_header": false,
+  "request_worker_id": true,
+  "metrics_endpoints": [],
+  "sessions": 4,
+  "turns": 2,
+  "lines": 12,
+  "pause_s": 0.0,
+  "max_inflight": 2,
+  "session_offset": 9000,
+  "system_tag": "[warmup-not-measured]",
+  "measured_start_unix": 1791817401.214243,
+  "measured_end_unix": 1791817402.9032984,
+  "failures": 0,
+  "expected_requests": 8,
+  "workload": "deterministic scripted history; client-throttled closed-loop sessions; not a real agent"
+}

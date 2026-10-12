@@ -1,0 +1,14 @@
+runs=20 reps=[1, 2, 3, 4, 5] invalid=none
+
+Per rep (prefill ratio vs R0 | resumed p95 ms | wall s):
+  rep 1: R0 1.00x | p95 309 | 28.2s   R1 0.88x | p95 276 | 26.7s   R2 0.26x | p95 48 | 22.0s   R3 0.26x | p95 49 | 21.9s
+  rep 2: R0 1.00x | p95 280 | 27.1s   R1 0.77x | p95 276 | 25.1s   R2 0.29x | p95 49 | 21.9s   R3 0.29x | p95 50 | 21.9s
+  rep 3: R0 1.00x | p95 280 | 25.8s   R1 1.17x | p95 288 | 26.6s   R2 0.36x | p95 49 | 21.9s   R3 0.36x | p95 49 | 22.1s
+  rep 4: R0 1.00x | p95 287 | 26.0s   R1 1.24x | p95 290 | 27.3s   R2 0.34x | p95 49 | 21.8s   R3 0.34x | p95 49 | 22.0s
+  rep 5: R0 1.00x | p95 289 | 26.1s   R1 0.86x | p95 283 | 25.0s   R2 0.35x | p95 46 | 21.9s   R3 0.35x | p95 47 | 21.8s
+
+H1 affinity: R2,R3 prefill <0.5x R0 and p95 <0.5x R0, every rep: SUPPORTED
+H2 KV partial: R1<R0 in 3/5 reps; median R1/R2 prefill = 3.25x (needs >2): NOT SUPPORTED
+H3 misses on moves: 397/397 = 1.000 (needs >=0.9): SUPPORTED
+H4 soft~hard: median R3/R2 prefill = 0.999; R2 split within 45-55% every rep: True: SUPPORTED
+H5 no balance penalty: R2 wall <= R0 wall every rep: SUPPORTED
