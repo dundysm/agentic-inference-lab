@@ -1,4 +1,4 @@
-# Agentic Inference Lab
+# Inference Under Pressure
 
 **A reproducible performance investigation of KV-cache reuse, memory pressure, and distributed request placement for multi-turn LLM workloads.**
 
@@ -81,4 +81,4 @@ For a new GPU run, read the [benchmark methodology](docs/benchmark-methodology.m
 - **Metrics:** client-observed time to first content token is not identical to server-internal TTFT. Client-side admission waiting is reported separately.
 - **Statistics:** repetitions reuse the same workload on the same host; individual turns are dependent observations. No claim of independent workloads or generalizable confidence interval.
 
-Built as an open, reproducible systems investigation. Technical feedback and counterexamples are welcome in [Issues](https://github.com/dundysm/agentic-inference-lab/issues).
+Built as an open, reproducible systems investigation. Technical feedback and counterexamples are welcome in [Issues](https://github.com/dundysm/inference-under-pressure/issues).
