@@ -243,7 +243,7 @@ What this adds:
   - [`results/2026-10-12-runpod-2x-l40s/`](../results/2026-10-12-runpod-2x-l40s/): smoke runs, sensitivity and supplementary cohorts, setup and runner logs.
 
 ## Next
-**Upstream issue.** Report to Dynamo, scoped by both cohorts, that under default weights the KV router knowingly trades cached-prefix reuse for transient load:
+**Upstream issue: filed as [ai-dynamo/dynamo#16194](https://github.com/ai-dynamo/dynamo/issues/16194).** It reports to Dynamo, scoped by both cohorts, that under default weights the KV router knowingly trades cached-prefix reuse for transient load:
 - On synchronized multi-turn traffic this erases all locality.
 - On staggered traffic it keeps about half.
 - `--router-prefill-load-scale 4` recovers most but not all of the gap to session affinity.
