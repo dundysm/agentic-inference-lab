@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Day 2: one Dynamo frontend + two dynamo.vllm workers (one per GPU). Source this file.
+# the distributed routing experiment: one Dynamo frontend + two dynamo.vllm workers (one per GPU). Source this file.
 # Single source of truth for worker/frontend flags; workers are identical in every routing arm.
 #
 #   start_cluster ARM RUN_DIR   # ARM in R0 R1 R2 R3 R1S4 R3H S45 S9
@@ -35,14 +35,14 @@ frontend_args() {
     R1) args+=(--router-mode kv) ;;
     R2) args+=(--router-mode round-robin --router-session-affinity-ttl-secs "$AFFINITY_TTL"
                --router-session-affinity-mode hard) ;;
-    # R3 per docs/distributed-routing.md: soft (policy-visible) affinity, so the KV/load scorer
+    # R3 per docs/routing-methodology.md: soft (policy-visible) affinity, so the KV/load scorer
     # can still move a session off a saturated worker. Soft needs a scoring router, hence kv.
     R3) args+=(--router-mode kv --router-session-affinity-ttl-secs "$AFFINITY_TTL"
                --router-session-affinity-mode soft) ;;
-    # Follow-up arms (docs/preregistration-day2-followup-2026-10-12.md).
+    # Follow-up arms (docs/protocols/routing-sensitivity-2026-10-12.md).
     R1S4) args+=(--router-mode kv --router-prefill-load-scale 4) ;;          # KV router, prefill weighted 4x
     R3H) args+=(--router-mode kv --router-session-affinity-ttl-secs "$AFFINITY_TTL"
-                --router-session-affinity-mode hard) ;;                         # the Day 2 guide's original R3
+                --router-session-affinity-mode hard) ;;                         # the the distributed routing experiment guide's original R3
     S45|S9) args+=(--router-mode round-robin) ;;                                # single worker: nothing to route
     *) echo "unknown arm $arm" >&2; return 1 ;;
   esac

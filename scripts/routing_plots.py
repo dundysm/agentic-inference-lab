@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Day 2 figures (guide section 10) and Tables A/B, from committed raw data. CPU only.
+"""the distributed routing experiment figures (guide section 10) and Tables A/B, from committed raw data. CPU only.
 
-Usage: python scripts/day2_plots.py results/2026-10-12-runpod-2x-rtxpro4500/day2-main OUT_DIR
+Usage: python scripts/routing_plots.py results/2026-10-12-runpod-2x-rtxpro4500/day2-main OUT_DIR
 Writes four PNGs and tables.md into OUT_DIR.
 """
 from __future__ import annotations
@@ -21,7 +21,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 import matplotlib.ticker  # noqa: E402
 
-spec = importlib.util.spec_from_file_location("day2_analyze", Path(__file__).with_name("day2_analyze.py"))
+spec = importlib.util.spec_from_file_location("day2_analyze", Path(__file__).with_name("routing_analyze.py"))
 ana = importlib.util.module_from_spec(spec); spec.loader.exec_module(ana)
 
 ARMS = ["R0", "R1", "R2", "R3"]
@@ -111,7 +111,7 @@ def plot_ttft(runs, reps, out):
     ax.legend(frameon=False, loc="upper right")
     finish(fig, out / "day2_resumed_ttft.png",
            "Grey: every resumed request across 5 reps (176 per run). Hollow: per-rep median; filled: per-rep p95. "
-           "Includes the Dynamo frontend; compare within Day 2 only.")
+           "Includes the Dynamo frontend; compare within the distributed routing experiment only.")
 
 
 def plot_prefill(runs, reps, out):

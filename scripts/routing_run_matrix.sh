@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Routing: run routing arms (R0-R3, follow-up R1S4/R3H/S45/S9), one fresh cluster per run, seeded order per rep.
-#   COHORT=pilot REPS=1 bash scripts/day2_run_matrix.sh
+#   COHORT=pilot REPS=1 bash scripts/routing_run_matrix.sh
 # Results go to local disk (RESULTS_ROOT); copy them off the pod after each cohort.
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -22,7 +22,7 @@ cd "$(dirname "$0")/.."
 : "${HOT_PAUSE_SCALE:=1}"
 : "${COLD_PAUSE_SCALE:=1}"
 : "${MODEL:?}" "${MODEL_REVISION:?}"
-source scripts/day2_cluster.sh
+source scripts/routing_cluster.sh
 
 schedule() {
   python - "$1" $ARMS <<'PY'

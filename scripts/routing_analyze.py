@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Day 2 per-run summary: placement, per-worker reuse and recomputation, latency, balance, validity.
+"""the distributed routing experiment per-run summary: placement, per-worker reuse and recomputation, latency, balance, validity.
 
-Usage: python scripts/day2_analyze.py RESULTS_DIR [--csv OUT.csv]
+Usage: python scripts/routing_analyze.py RESULTS_DIR [--csv OUT.csv]
 RESULTS_DIR holds rep_*/R*/ run directories (e.g. results/day2/pilot).
 """
 from __future__ import annotations

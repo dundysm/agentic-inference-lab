@@ -2,7 +2,7 @@
 """Join a debug-logged KV-router run to its requests: router belief vs actual reuse, per decision.
 
 Needs a run made with DYN_LOG=info,dynamo_kv_router=debug and a client that records response_id.
-Usage: python scripts/day2_router_diagnosis.py RUN_DIR [--examples N]
+Usage: python scripts/routing_diagnose.py RUN_DIR [--examples N]
 """
 from __future__ import annotations
 

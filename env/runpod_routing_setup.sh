@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Day 2 environment on a RunPod 2x RTX PRO 4500 pod (driver 580.x, CUDA 13.0 host), runpod/pytorch image.
+# the distributed routing experiment environment on a RunPod 2x RTX PRO 4500 pod (driver 580.x, CUDA 13.0 host), runpod/pytorch image.
 # These are the steps used on 2026-10-12, consolidated. Run from the repo root inside the pod.
 #
-# Workarounds this captures (also documented in scripts/day2_cluster.sh):
+# Workarounds this captures (also documented in scripts/routing_cluster.sh):
 #   - Dynamo 1.5.1 pins vllm 0.28.0 and nixl[cu13], so the host driver must support CUDA 13.
 #   - No etcd, NATS or docker is needed: workers and frontend use --discovery-backend file,
 #     --request-plane tcp and --event-plane zmq.
