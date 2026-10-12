@@ -35,8 +35,10 @@ frontend_args() {
     R1) args+=(--router-mode kv) ;;
     R2) args+=(--router-mode round-robin --router-session-affinity-ttl-secs "$AFFINITY_TTL"
                --router-session-affinity-mode hard) ;;
+    # R3 per docs/distributed-routing.md: soft (policy-visible) affinity, so the KV/load scorer
+    # can still move a session off a saturated worker. Soft needs a scoring router, hence kv.
     R3) args+=(--router-mode kv --router-session-affinity-ttl-secs "$AFFINITY_TTL"
-               --router-session-affinity-mode hard) ;;
+               --router-session-affinity-mode soft) ;;
     *) echo "unknown arm $arm" >&2; return 1 ;;
   esac
   printf '%s\n' "${args[@]}"
