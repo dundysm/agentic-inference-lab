@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Evaluate the the distributed routing experiment follow-up cohorts against docs/protocols/routing-sensitivity-2026-10-12.md.
+"""Evaluate the distributed routing experiment follow-up cohorts against docs/protocols/routing-sensitivity-2026-10-12.md.
 
 Usage: python scripts/routing_followup_evaluate.py sens RESULTS_DIR   (hypotheses S-H1..S-H6)
        python scripts/routing_followup_evaluate.py supp RESULTS_DIR   (hypotheses X-H1..X-H4)
