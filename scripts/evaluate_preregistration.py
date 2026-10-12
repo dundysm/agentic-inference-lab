@@ -2,6 +2,11 @@
 import glob, json, statistics as s, sys
 from prometheus_client.parser import text_string_to_metric_families as parse
 
+
+def _glob(pattern):
+    # Normalize separators so path-part parsing works on Windows too.
+    return [p.replace("\\", "/") for p in glob.glob(pattern)]
+
 def metrics(path):
     v = {}
     for fam in parse(open(path).read()):
@@ -11,7 +16,7 @@ def metrics(path):
 
 root = sys.argv[1]
 R = {}
-for d in glob.glob(f"{root}/*/rep_*/*"):
+for d in _glob(f"{root}/*/rep_*/*"):
     if not d[-1] in "ABCD":
         continue
     b, rep, arm = int(d.split("/")[-3]), int(d.split("/")[-2][4:]), d[-1]

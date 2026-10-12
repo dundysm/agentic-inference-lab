@@ -2,6 +2,11 @@
 import glob, json, re, statistics as s, sys
 from prometheus_client.parser import text_string_to_metric_families as parse
 
+
+def _glob(pattern):
+    # Normalize separators so path-part parsing works on Windows too.
+    return [p.replace("\\", "/") for p in glob.glob(pattern)]
+
 def metrics(path):
     v = {}
     for fam in parse(open(path).read()):
@@ -12,7 +17,7 @@ def metrics(path):
 root = sys.argv[1]
 out = {}
 print("GiB   arm cache sess  ok/n     cachedFrac  prefill_computed  preempt  ttft_cold  ttft_res_med/p95  user_ttft_res  wall_s  goodput@3s")
-for d in sorted(glob.glob(f"{root}/*/rep_1/*"), key=lambda p: (int(p.split("/")[-3]), p[-1])):
+for d in sorted(_glob(f"{root}/*/rep_1/*"), key=lambda p: (int(p.split("/")[-3]), p[-1])):
     b, arm = int(d.split("/")[-3]), d[-1]
     rows = [json.loads(l) for l in open(d + "/requests.jsonl")]
     cfg = json.load(open(d + "/server_config.json"))
