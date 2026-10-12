@@ -53,3 +53,33 @@ If none qualifies, report **no crossover demonstrated in the tested profiles**, 
 - No high-load routing implementation will be changed as a result of these measurements until the observed tradeoffs have been examined.
 
 No outcome is guaranteed or implied by preparing this protocol.
+
+---
+
+## Amendment 1 (2026-10-12, before any pilot or main run)
+
+**Status when written:** no pilot or main run of this study had started, and no study data existed. The original text above is kept unchanged so the change is auditable. This amendment replaces two parts of the primary crossover decision rule.
+
+**1. Contention gate: the placement-skew alternative is replaced.**
+- **Problem:** the rule's alternative gate, "R2 request-placement imbalance ≥15 percentage points from 50/50", is structurally unreachable.
+  - Under hard affinity, every session sends exactly 12 requests to its bound worker, and round-robin first placement binds sessions 8/8. A 15-point skew would require ≤5 of 16 sessions on one worker.
+  - Every historical R2 run had a skew of exactly 0.0 (96/96 requests).
+  - The hot-skew profile creates imbalance **over time** (hot sessions burst), which total request counts cannot show.
+- **Alternative considered and rejected:** a time-weighted in-flight imbalance, measured as the mean of |share of in-flight requests on worker 0 − 0.5| over busy time.
+  - Calibration on the committed historical cohorts showed affinity is burstier than round robin **even without contention**. R2 exceeded R0 by 0.06–0.10 (primary cohort) and 0.07–0.11 (sensitivity cohort), while worker queue time stayed ≤0.1 ms.
+  - A gate on imbalance would therefore open without any real contention.
+- **Amended gate:** a repetition counts toward a crossover only if, in that (profile, repetition), **at least one R2 worker's mean scheduler queue time is ≥5 ms** (unchanged) **or at least one R2 worker records ≥1 preemption** (`vllm:num_preemptions_total` delta).
+  - Both are direct server-side contention signals.
+  - Missing queue-time or preemption counters invalidate the run, as before.
+  - Request-placement skew and time-weighted in-flight imbalance are still computed and reported, but descriptively only.
+
+**2. "Non-worse wall time" becomes "at most 1.02× R2".**
+- **Problem:** a strict `wall ≤ R2 wall` turns near-ties into coin flips. Wall time varied by about ±0.3 s across repetitions of the same arm in the historical cohorts, about 1–1.5% of a 20–27 s run.
+- **Amended criterion:** the candidate's wall time must be at most 1.02× R2's in the same (profile, repetition).
+
+**Unchanged:**
+- The p95 criterion (≤0.90× R2).
+- The 4-of-5 repetition requirement.
+- All profiles, arms, seeds, validity rules and the "no crossover demonstrated" outcome.
+
+**Implementation:** `scripts/analyze_load_crossover.py` (`contention_observed`, `crossover_win`, `WALL_TOLERANCE`, `inflight_imbalance`), with unit tests in `tests/test_logic.py`.
