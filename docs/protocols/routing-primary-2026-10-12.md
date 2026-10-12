@@ -1,4 +1,4 @@
-# Day 2 main cohort pre-registration: two-replica routing
+# Preregistered protocol: distributed routing baseline
 
 **Written:** 2026-10-12, after the four-arm pilot (`results/2026-10-12-runpod-2x-rtxpro4500/day2-pilot/`) and **before** any main-cohort run.
 
@@ -12,7 +12,7 @@
   - Flags: `--block-size 64 --max-model-len 8192 --kv-cache-memory-bytes 4831838208` (32,768 KV tokens each), `--gpu-memory-utilization 0.70`, prefix caching on, KV events on.
   - Environment: `PYTHONHASHSEED=0`, `VLLM_USE_FLASHINFER_SAMPLER=0`.
   - The exact argv is recorded per run in `launch_argv.txt`.
-- **Arms:** frontend flags per `scripts/day2_cluster.sh` at the commit that adds this file.
+- **Arms:** frontend flags per `scripts/routing_cluster.sh` at the commit that adds this file.
 
 | Arm | Frontend routing |
 |---|---|
