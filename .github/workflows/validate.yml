@@ -21,6 +21,11 @@ jobs:
           for f in scripts/*.sh env/*.sh; do bash -n "$f"; done
       - name: Run unit tests
         run: python -m unittest discover -s tests -v
+      - name: Reevaluate committed historical routing cohorts
+        run: |
+          python scripts/routing_evaluate.py results/2026-10-12-runpod-2x-rtxpro4500/day2-main > /tmp/routing-primary.txt
+          python scripts/routing_followup_evaluate.py sens results/2026-10-12-runpod-2x-l40s/day2-sens > /tmp/routing-sensitivity.txt
+          python scripts/routing_followup_evaluate.py supp results/2026-10-12-runpod-2x-l40s/day2-supp > /tmp/routing-capacity.txt
       - name: Verify prospective matrix dry run
         run: |
           DRY_RUN=1 STUDY_PHASE=pilot bash scripts/run_load_crossover.sh
