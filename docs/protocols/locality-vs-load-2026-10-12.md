@@ -83,3 +83,31 @@ No outcome is guaranteed or implied by preparing this protocol.
 - All profiles, arms, seeds, validity rules and the "no crossover demonstrated" outcome.
 
 **Implementation:** `scripts/analyze_load_crossover.py` (`contention_observed`, `crossover_win`, `WALL_TOLERANCE`, `inflight_imbalance`), with unit tests in `tests/test_logic.py`.
+
+---
+
+## Amendment 2 (2026-10-12, after the original pilot, before any main run)
+
+**Status when written:**
+- The original 15-run pilot had completed: exploratory; data in `results/2026-10-12-runpod-2x-rtxpro4500se-locality-load/locality-load/pilot/`, 2× RTX PRO 4500 Blackwell Server Edition.
+- No main-cohort run had started.
+- The original text and Amendment 1 above are unchanged.
+
+**What the pilot showed.** All 15 cells were valid, but no profile produced contention under hard affinity. R2 worker mean queue time was 0.01 ms in every profile, with 0 preemptions. The 256-token output cap was only a cap: realized output length had a median of about 61 tokens, so the saturation and hot-skew profiles never generated their intended decode load. Under the decision rule (Amendment 1), the main cohort as designed could not have qualified any repetition. It would have measured requested concurrency, not saturation.
+
+**Changes:**
+1. **Forced output length in the stress profiles.** `saturation` and `hot-skew` send `ignore_eos: true` (a root-level request field in Dynamo 1.5.1's OpenAI layer) with `max_tokens = 512`, so every response generates exactly 512 tokens.
+   - With affinity binding 8 sessions per worker, the active footprint approaches the 32,768-token per-worker KV pool: about 8 × (≈3.4K prompt + 512).
+   - `reference` is unchanged (32-token cap, not forced). It already realized exactly 32 tokens.
+2. **Validity.** A run with `ignore_eos` is invalid unless every response's `completion_tokens` equals the cap.
+3. **New pilot phase.** A fresh one-repetition pilot, `STUDY_PHASE=pilot-a2`, stored separately from the original pilot. Both pilots are exploratory and excluded from the main cohort.
+4. **Go/no-go for the main cohort.** The main cohort runs only if, in pilot-a2, at least one stress profile shows R2 contention as defined in Amendment 1: an R2 worker averages ≥5 ms queue time or records ≥1 preemption.
+   - If not, the study stops and reports **"no saturation regime reached at the tested settings"**, with both pilots as evidence.
+   - Thresholds and the crossover rule are not changed after seeing pilot-a2.
+
+**Unchanged:**
+- The arms, sessions, transcripts, seeds and timing schedules.
+- The KV budget and the decision rule (as amended by Amendment 1).
+- The 5-repetition main design.
+
+The output cap and `ignore_eos` enter the prompt digest, so stress-profile digests differ from the original pilot's. Digests must still match across arms within each (profile, repetition).

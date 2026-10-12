@@ -55,6 +55,8 @@ def prompt_set_digest(args: argparse.Namespace) -> str:
             requests.append(json.loads(json.dumps(messages)))
         transcripts.append({"session": session_id, "requests": requests})
     payload = {"model": args.model, "max_tokens": getattr(args, "max_output_tokens", MAX_OUTPUT_TOKENS), "transcripts": transcripts}
+    if getattr(args, "ignore_eos", False):
+        payload["ignore_eos"] = True  # only when set, so historical digests are unchanged
     encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()
     return hashlib.sha256(encoded).hexdigest()
 
@@ -101,12 +103,14 @@ def get_worker_id(event: dict) -> int | None:
 async def query(client: httpx.AsyncClient, base_url: str, model: str,
                 messages: list[dict[str, str]], sem: asyncio.Semaphore,
                 session_id: str | None = None, request_worker_id: bool = False,
-                max_output_tokens: int = MAX_OUTPUT_TOKENS) -> dict:
+                max_output_tokens: int = MAX_OUTPUT_TOKENS, ignore_eos: bool = False) -> dict:
     body = {"model": model, "messages": messages, "max_tokens": max_output_tokens,
             "temperature": 0.0, "stream": True,
             "stream_options": {"include_usage": True}}
     if request_worker_id:
         body["nvext"] = {"extra_fields": ["worker_id"]}
+    if ignore_eos:
+        body["ignore_eos"] = True  # generate exactly max_tokens (Dynamo CommonExt)
     headers = {"X-Dynamo-Session-ID": session_id} if session_id else None
     request_ready_unix = time.time()
     async with sem:
@@ -201,6 +205,8 @@ async def main() -> None:
                    help="if > --pause, each tool pause is seeded uniform in [--pause, PAUSE_MAX]")
     p.add_argument("--schedule-seed", default="day2-sensitivity")  # Historical default retained
     p.add_argument("--max-output-tokens", type=int, default=MAX_OUTPUT_TOKENS)
+    p.add_argument("--ignore-eos", action="store_true",
+                   help="ask the server to ignore end-of-sequence and generate exactly --max-output-tokens")
     p.add_argument("--hot-session-count", type=int, default=0,
                    help="select this many hot sessions in deterministic even-ID-first order")
     p.add_argument("--hot-pause-scale", type=float, default=1.0)
@@ -245,7 +251,8 @@ async def main() -> None:
                         row["session_id"] = session_id
                     try:
                         row.update(await query(client, args.base_url, args.model, messages, sem,
-                                               session_id, args.request_worker_id, args.max_output_tokens))
+                                               session_id, args.request_worker_id, args.max_output_tokens,
+                                               args.ignore_eos))
                     except Exception as exc:
                         row.update({"success": False, "error": f"{type(exc).__name__}: {exc}",
                                     "end_unix": time.time()})
@@ -264,7 +271,8 @@ async def main() -> None:
         "request_worker_id": args.request_worker_id, "metrics_endpoints": args.metrics,
         "sessions": args.sessions, "turns": args.turns, "lines": args.lines,
         "pause_s": args.pause, "pause_max_s": args.pause_max, "stagger_s": args.stagger_s,
-        "max_output_tokens": args.max_output_tokens, "hot_session_count": args.hot_session_count,
+        "max_output_tokens": args.max_output_tokens, "ignore_eos": args.ignore_eos,
+        "hot_session_count": args.hot_session_count,
         "hot_pause_scale": args.hot_pause_scale, "cold_pause_scale": args.cold_pause_scale,
         "schedule_seed": args.schedule_seed, "schedule_sha256": schedule_digest,
         "max_inflight": args.max_inflight,

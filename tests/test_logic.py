@@ -3,6 +3,7 @@ import argparse
 import importlib.util
 import json
 import tempfile
+import os
 import subprocess
 import unittest
 from pathlib import Path
@@ -157,6 +158,32 @@ class HarnessTests(unittest.TestCase):
         # More than 2% slower, or under 10% better p95, fails.
         self.assertFalse(xo.crossover_win(cells(r2_queue=6.0, cand_wall=103.0), "R1"))
         self.assertFalse(xo.crossover_win(cells(r2_queue=6.0, cand_p95=91.0), "R1"))
+
+    def test_ignore_eos_changes_digest_only_when_set(self):
+        base = self.args(sessions=16, turns=12, lines=80)
+        off = self.args(sessions=16, turns=12, lines=80, ignore_eos=False)
+        on = self.args(sessions=16, turns=12, lines=80, ignore_eos=True)
+        self.assertEqual(wl.prompt_set_digest(base), wl.prompt_set_digest(off))
+        self.assertNotEqual(wl.prompt_set_digest(base), wl.prompt_set_digest(on))
+
+    def test_amendment2_stress_profiles_force_512_tokens(self):
+        env = dict(os.environ, DRY_RUN="1")
+        try:
+            a2 = subprocess.check_output(["bash", "scripts/run_load_crossover.sh"], cwd=ROOT,
+                                         env=dict(env, STUDY_PHASE="pilot-a2"), text=True)
+            original = subprocess.check_output(["bash", "scripts/run_load_crossover.sh"], cwd=ROOT,
+                                               env=dict(env, STUDY_PHASE="pilot"), text=True)
+        except (OSError, subprocess.CalledProcessError) as exc:  # Windows without a POSIX bash on PATH
+            self.skipTest(f"bash unavailable: {exc}")
+        for line in a2.splitlines():
+            if "profile=reference" in line:
+                self.assertIn("max_output=32 ignore_eos=0", line)
+            elif "profile=" in line:
+                self.assertIn("max_output=512 ignore_eos=1", line)
+        # The already-run original pilot keeps its as-run settings for auditability.
+        for line in original.splitlines():
+            if "profile=saturation" in line or "profile=hot-skew" in line:
+                self.assertIn("max_output=256 ignore_eos=0", line)
 
     def test_crossover_output_cap_changes_digest_only_when_changed(self):
         base = self.args(sessions=16, turns=12, lines=80)

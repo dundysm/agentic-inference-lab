@@ -1,0 +1,33 @@
+{
+  "scenario": "routing-R3",
+  "model": "Qwen/Qwen3-4B-Instruct-2507",
+  "prompt_set_sha256": "c9c7e42687f36aea6cbb9e527664277b0234bd86779d04c000bd6873d188af4e",
+  "route_arm": "R3",
+  "session_header": true,
+  "request_worker_id": true,
+  "metrics_endpoints": [
+    "frontend=http://127.0.0.1:8000/metrics",
+    "worker0=http://127.0.0.1:9081/metrics",
+    "worker1=http://127.0.0.1:9082/metrics"
+  ],
+  "sessions": 16,
+  "turns": 12,
+  "lines": 80,
+  "pause_s": 0.25,
+  "pause_max_s": 1.75,
+  "stagger_s": 8.0,
+  "max_output_tokens": 32,
+  "hot_session_count": 0,
+  "hot_pause_scale": 1.0,
+  "cold_pause_scale": 1.0,
+  "schedule_seed": "crossover-reference-rep-1",
+  "schedule_sha256": "2062dc54a9482608256d32bb1f767aa8375d59c9ced6e647d9b2d1c5c014fb6a",
+  "max_inflight": 4,
+  "session_offset": 0,
+  "system_tag": "",
+  "measured_start_unix": 1791838521.0576332,
+  "measured_end_unix": 1791838548.864962,
+  "failures": 0,
+  "expected_requests": 192,
+  "workload": "deterministic scripted history; client-throttled closed-loop sessions; not a real agent"
+}

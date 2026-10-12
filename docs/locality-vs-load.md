@@ -22,10 +22,10 @@ This study extends the completed [distributed routing experiments](routing-findi
 | Profile | In flight | Output cap | Start staggering | Tool pauses | Session skew |
 |---|---:|---:|---|---|---|
 | `reference` | 4 | 32 | Uniformly seeded 0–8 seconds | Seeded 0.25–1.75 s | No |
-| `saturation` | 16 | 256 | Same seed/window | Same seeded range | No |
-| `hot-skew` | 16 | 256 | Same seed/window | Hot pauses ×0.1; cold ×3 | 8 deterministic even-ID hot sessions |
+| `saturation` | 16 | 512, forced (`ignore_eos`) | Same seed/window | Same seeded range | No |
+| `hot-skew` | 16 | 512, forced (`ignore_eos`) | Same seed/window | Hot pauses ×0.1; cold ×3 | 8 deterministic even-ID hot sessions |
 
-**Important:** an output *cap* does not force 256 generated tokens. The analyzer records realized output-token lengths. Likewise, setting concurrency to 16 does not prove saturation; inspect measured worker queueing, load imbalance, and harness admission delay.
+**Amendment 2:** the original pilot used an unforced 256-token cap, and the model stopped after a median of about 61 tokens, so the stress profiles generated no contention. The stress profiles now force exactly 512 output tokens, and a stress run is invalid unless every response reaches the cap. See [Amendment 2](protocols/locality-vs-load-2026-10-12.md#amendment-2-2026-10-12-after-the-original-pilot-before-any-main-run). The analyzer records realized output-token lengths. Likewise, setting concurrency to 16 does not prove saturation; inspect measured worker queueing, load imbalance, and harness admission delay.
 
 Sessions and turns are constant, but the prompt fingerprints must differ between profiles with different output caps. Session transcripts themselves remain identical. For each profile/repetition, the exact full prompt digest and **entire timing schedule digest** must match across all routing policies.
 
@@ -55,11 +55,11 @@ export HF_HOME=/root/hf-cache HF_HUB_OFFLINE=1
 export MODEL=Qwen/Qwen3-4B-Instruct-2507
 export MODEL_REVISION=cdbee75f17c01a7cc42f958dc650907174af0554
 
-# Calibrate that the router loads and each scenario runs successfully.
-STUDY_PHASE=pilot RESULTS_ROOT=/root/results/inference-under-pressure \
+# Calibrate that the router loads and each scenario runs successfully (Amendment 2 pilot).
+STUDY_PHASE=pilot-a2 RESULTS_ROOT=/root/results/inference-under-pressure \
   bash scripts/run_load_crossover.sh
 
-# Only after inspecting pilots and confirming valid runtime/memory/placement.
+# Only if the pilot-a2 go/no-go rule passes (Amendment 2): R2 contention in at least one stress profile.
 STUDY_PHASE=main RESULTS_ROOT=/root/results/inference-under-pressure \
   bash scripts/run_load_crossover.sh
 

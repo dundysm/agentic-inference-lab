@@ -18,6 +18,7 @@ cd "$(dirname "$0")/.."
 : "${PAUSE_MAX:=0}"
 : "${SCHEDULE_SEED:=day2-sensitivity}"
 : "${MAX_OUTPUT_TOKENS:=32}"
+: "${IGNORE_EOS:=0}"           # 1 = generate exactly MAX_OUTPUT_TOKENS (locality-vs-load Amendment 2)
 : "${HOT_SESSION_COUNT:=0}"
 : "${HOT_PAUSE_SCALE:=1}"
 : "${COLD_PAUSE_SCALE:=1}"
@@ -56,7 +57,7 @@ json.dump({"cohort": "$COHORT", "rep": $rep, "arm": "$arm", "model": "$MODEL",
   "block_size": int("$BLOCK_SIZE"), "max_model_len": int("$MAX_MODEL_LEN"),
   "gpu_memory_utilization": float("$GPU_MEM_UTIL"), "affinity_ttl_s": int("$AFFINITY_TTL"),
   "sessions": $SESSIONS, "turns": $TURNS, "lines": $LINES, "pause_s": $PAUSE,
-  "max_inflight": $MAX_INFLIGHT, "max_output_tokens": int("$MAX_OUTPUT_TOKENS"),
+  "max_inflight": $MAX_INFLIGHT, "max_output_tokens": int("$MAX_OUTPUT_TOKENS"), "ignore_eos": "$IGNORE_EOS" == "1",
   "hot_session_count": int("$HOT_SESSION_COUNT"), "hot_pause_scale": float("$HOT_PAUSE_SCALE"),
   "cold_pause_scale": float("$COLD_PAUSE_SCALE"), "stagger_s": float("$STAGGER_S"), "pause_max_s": float("$PAUSE_MAX"),
   "schedule_seed": "$SCHEDULE_SEED", "workers": $(arm_workers "$arm"), "kv_cache_memory_bytes_actual": $(arm_kv_bytes "$arm"),
@@ -88,6 +89,7 @@ seen = {m.get(str(json.loads(l).get("worker_id"))) for l in open(d / "warmup/req
 if seen != set(range(int(sys.argv[2]))): raise SystemExit(f"warm-up reached workers {seen}, not all")
 print("warmup reached all workers:", sorted(seen))
 PY
+    EOS_ARGS=(); [[ "$IGNORE_EOS" == 1 ]] && EOS_ARGS=(--ignore-eos)
     WORKER_METRICS=()
     for ((i = 0; i < CLUSTER_WORKERS; i++)); do WORKER_METRICS+=(--metrics "worker$i=http://127.0.0.1:$((SYSTEM_PORT_BASE + i))/metrics"); done
     nvidia-smi --query-gpu=timestamp,index,utilization.gpu,memory.used --format=csv -lms 500 > "$dir/gpu_util.csv" &
@@ -96,7 +98,7 @@ PY
       --sessions "$SESSIONS" --turns "$TURNS" --lines "$LINES" --pause "$PAUSE" --max-inflight "$MAX_INFLIGHT" \
       --session-header --request-worker-id \
       --stagger-s "$STAGGER_S" --pause-max "$PAUSE_MAX" --schedule-seed "$SCHEDULE_SEED" \
-      --max-output-tokens "$MAX_OUTPUT_TOKENS" --hot-session-count "$HOT_SESSION_COUNT" \
+      --max-output-tokens "$MAX_OUTPUT_TOKENS" "${EOS_ARGS[@]}" --hot-session-count "$HOT_SESSION_COUNT" \
       --hot-pause-scale "$HOT_PAUSE_SCALE" --cold-pause-scale "$COLD_PAUSE_SCALE" \
       --metrics frontend=http://127.0.0.1:8000/metrics "${WORKER_METRICS[@]}" \
       --out-dir "$dir" > "$dir/workload.log"
