@@ -1,6 +1,6 @@
 # Locality versus load: crossover study
 
-**Status:** implementation and preregistered protocol prepared. **No GPU crossover results have been run or published.**
+**Status (2026-10-12):** both pilots ran. The Amendment 2 go/no-go rule was not met, so the main cohort was not run. Outcome: **no saturation regime reached at the tested settings**. See [locality-vs-load-findings.md](locality-vs-load-findings.md).
 
 ## Research question
 
