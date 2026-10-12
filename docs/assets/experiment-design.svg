@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="245" viewBox="0 0 1120 245" role="img" aria-labelledby="title desc">
+<title id="title">Four controlled combinations of workload pressure and prefix caching</title>
+<desc id="desc">At low pressure, four sessions, cache off A and cache on B. At higher pressure, sixteen sessions, cache on C and cache off D. Both rows repeated at matched explicit KV memory budgets.</desc>
+<rect width="1120" height="245" rx="18" fill="#0b1220"/>
+<text x="34" y="39" fill="#f1f5f9" font-size="23" font-family="Arial,Helvetica,sans-serif" font-weight="700">One workload. Four controlled arms.</text>
+<text x="35" y="60" fill="#94a3b8" font-size="12" font-family="Arial,Helvetica,sans-serif">Repeat each arm at 4.5 GiB and 10 GiB KV budgets; fresh worker + disjoint warm-up per run.</text>
+<text x="290" y="95" fill="#cbd5e1" font-size="13" text-anchor="middle" font-family="Arial,Helvetica,sans-serif">Cache OFF</text>
+<text x="817" y="95" fill="#cbd5e1" font-size="13" text-anchor="middle" font-family="Arial,Helvetica,sans-serif">Cache ON</text>
+<rect x="29" y="109" width="510" height="47" rx="9" fill="#263247" stroke="#64748b"/>
+<rect x="581" y="109" width="510" height="47" rx="9" fill="#134e4a" stroke="#2dd4bf"/>
+<rect x="29" y="174" width="510" height="47" rx="9" fill="#263247" stroke="#64748b"/>
+<rect x="581" y="174" width="510" height="47" rx="9" fill="#134e4a" stroke="#2dd4bf"/>
+<text x="40" y="136" font-size="16" font-weight="700" font-family="Arial,Helvetica,sans-serif" fill="#e2e8f0">A</text>
+<text x="91" y="136" font-size="15" font-family="Arial,Helvetica,sans-serif" fill="#e2e8f0">4 sessions · 2 in flight</text>
+<text x="594" y="136" font-size="16" font-weight="700" font-family="Arial,Helvetica,sans-serif" fill="#99f6e4">B</text>
+<text x="644" y="136" font-size="15" font-family="Arial,Helvetica,sans-serif" fill="#e2e8f0">4 sessions · 2 in flight</text>
+<text x="40" y="201" font-size="16" font-weight="700" font-family="Arial,Helvetica,sans-serif" fill="#e2e8f0">D</text>
+<text x="91" y="201" font-size="15" font-family="Arial,Helvetica,sans-serif" fill="#e2e8f0">16 sessions · 4 in flight</text>
+<text x="594" y="201" font-size="16" font-weight="700" font-family="Arial,Helvetica,sans-serif" fill="#99f6e4">C</text>
+<text x="644" y="201" font-size="15" font-family="Arial,Helvetica,sans-serif" fill="#e2e8f0">16 sessions · 4 in flight</text>
+<text x="1072" y="237" font-size="11" font-family="Arial,Helvetica,sans-serif" fill="#94a3b8" text-anchor="end">Measured on one NVIDIA A40</text>
+</svg>
