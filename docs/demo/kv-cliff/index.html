@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>inference under pressure · the prefix cache cliff</title>
+<meta name="description" content="Replay of real vLLM runs: 16 agent sessions, one A40. At 4.5 GiB of KV cache the prefix cache reuses 0.5%; at 10 GiB, 98.9%.">
+<meta property="og:title" content="the prefix cache cliff">
+<meta property="og:description" content="16 agent sessions on one A40. 4.5 GiB of KV cache: 0.5% of the prefix reused. 10 GiB: 98.9%. Replay the real runs.">
+<style>
+:root{--bg:#07090d;--card:#0d1117;--line:#1c2430;--ink:#e6edf3;--mute:#8b949e;--dim:#5b6573;--accent:#7aa2ff;--red:#ff5f56;--amber:#ffcf70;--green:#3fd47a;--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif}
+.wrap{max-width:1180px;margin:0 auto;padding:36px 20px 60px}
+.kick{font:600 11px/1 var(--mono);letter-spacing:.14em;color:var(--accent);text-transform:uppercase}
+h1{font-size:clamp(28px,4.6vw,46px);line-height:1.08;margin:14px 0 14px;letter-spacing:-.02em}
+h1 .bad{color:var(--red)}h1 .good{color:var(--green)}
+.lede{color:var(--mute);max-width:760px;margin:0 0 26px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:18px}
+.card h2{font:600 11px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--mute);margin:0 0 14px}
+.grid{display:grid;grid-template-columns:1.35fr 1fr;gap:18px}
+@media (max-width:900px){.grid{grid-template-columns:1fr}}
+.ctl{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;margin-bottom:14px}
+.seg{display:flex;flex-wrap:wrap;gap:6px}
+.seg button{font:600 13px var(--mono);color:var(--mute);background:#111722;border:1px solid var(--line);border-radius:8px;padding:7px 10px;cursor:pointer;min-width:52px}
+.seg button small{display:block;font-size:9px;letter-spacing:.08em;color:var(--dim);font-weight:500}
+.seg button.on{color:#0b0f16;background:var(--ink);border-color:var(--ink)}.seg button.on small{color:#333c48}
+.seg button:disabled{opacity:.35;cursor:default}
+.lbl{font:11px var(--mono);color:var(--dim);letter-spacing:.06em;text-transform:uppercase}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:14px 0 4px}
+@media (max-width:560px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.stat .k{font:11px var(--mono);color:var(--mute)}.stat .v{font:600 26px/1.15 var(--mono)}
+.gauge{position:relative;height:30px;margin:6px 0 4px}
+canvas{display:block;width:100%}
+.note{font-size:12.5px;color:var(--mute);margin:10px 0 0}
+.note b{color:var(--ink);font-weight:600}
+.btn{font:600 12px var(--mono);color:var(--ink);background:#111722;border:1px solid var(--line);border-radius:8px;padding:7px 12px;cursor:pointer}
+.btn:hover,.seg button:hover:not(.on):not(:disabled){border-color:#3a4658}
+input[type=range]{width:100%;accent-color:#fff}
+.legend{display:flex;align-items:center;gap:8px;font:11px var(--mono);color:var(--mute);margin-top:8px}
+.legend .bar{flex:0 0 120px;height:6px;border-radius:3px;background:linear-gradient(90deg,var(--red),var(--amber),var(--green))}
+table{width:100%;border-collapse:collapse;font:12px var(--mono);margin-top:12px}
+th,td{text-align:right;padding:5px 6px;border-bottom:1px solid var(--line);white-space:nowrap}
+.tw{overflow-x:auto}
+@media (max-width:560px){table{font-size:11px}th,td{padding:5px 4px}}th{color:var(--dim);font-weight:500}
+td:first-child,th:first-child{text-align:left}tr.sel td{color:#fff;background:#151c27}
+.event{font:12.5px var(--mono);color:var(--mute);min-height:20px;margin-top:8px}
+.event .miss{color:var(--red)}.event .hit{color:var(--green)}
+.prov{font-size:12px;color:var(--dim);line-height:1.6}.prov b{color:var(--mute)}
+a{color:var(--accent)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="kick">inference under pressure · prefix cache cliff</div>
+  <h1>Same model, same 16 agents.<br>At 4.5 GiB the cache reuses <span class="bad">0.5%</span>. At 10 GiB, <span class="good">98.9%</span>.</h1>
+  <p class="lede">Pick a KV budget. Every bar below is a real request from a vLLM run on one A40: 16 scripted agent sessions, 12 turns each, a 0.5 s tool pause between turns. When the sessions' prefixes don't all fit, the cache keeps throwing away exactly the one that's needed next.</p>
+
+  <div class="card">
+    <div class="ctl">
+      <div><div class="lbl" style="margin-bottom:6px">KV cache budget</div><div class="seg" id="budgets"></div></div>
+      <div><div class="lbl" style="margin-bottom:6px">run</div><div class="seg" id="reps"></div></div>
+      <div><div class="lbl" style="margin-bottom:6px">prefix cache</div><div class="seg" id="arms"></div></div>
+    </div>
+    <div class="lbl">KV pool vs the 16 sessions' prefixes</div>
+    <canvas id="gauge" height="56"></canvas>
+    <div class="stats">
+      <div class="stat"><div class="k">replay clock</div><div class="v" id="sClock">0.0 s</div></div>
+      <div class="stat"><div class="k">requests done</div><div class="v" id="sDone">0/192</div></div>
+      <div class="stat"><div class="k">resumed prompt reused</div><div class="v" id="sReuse">–</div></div>
+      <div class="stat"><div class="k">resumed TTFT (median)</div><div class="v" id="sTtft">–</div></div>
+    </div>
+    <canvas id="lanes" height="330"></canvas>
+    <div class="ctl" style="margin:10px 0 0">
+      <button class="btn" id="play">pause</button>
+      <div class="seg" id="speeds"></div>
+      <div class="legend"><span>recomputed</span><span class="bar"></span><span>reused from cache</span></div>
+    </div>
+    <p class="note">One row per session, real wall-clock time. The solid part of each bar is the wait for the first token (prefill); the faded part is decode. Grey bars are turn 0, which has nothing to reuse. Turn order is round robin, four requests in flight.</p>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h2>The cliff · KV pool size → prefix reused on resumed turns</h2>
+      <canvas id="cliff" height="320"></canvas>
+      <p class="note">Dots are measured (filled = 5-run main cohort, median; hollow = 1-run pilot). The dashed line is the toy LRU model on the right, fed the real request order. Reuse is zero until the pool holds every session's prefix, then it's nearly all of it. Nothing was measured between 43,680 and 58,240 tokens, so the slope there is the model, not data.</p>
+      <div class="tw"><table id="tbl"></table></div>
+    </div>
+    <div class="card">
+      <h2>Why · a toy LRU cache, one request at a time</h2>
+      <div class="lbl">pool size (toy) <span id="capV" style="color:var(--ink)"></span></div>
+      <input type="range" id="cap" min="16000" max="80000" step="16">
+      <canvas id="lru" height="150"></canvas>
+      <div class="event" id="ev"></div>
+      <div class="stats" style="grid-template-columns:repeat(2,minmax(0,1fr))">
+        <div class="stat"><div class="k">toy reuse so far</div><div class="v" id="tReuse">–</div></div>
+        <div class="stat"><div class="k">next session up</div><div class="v" id="tNext">–</div></div>
+      </div>
+      <div class="ctl" style="margin:8px 0 0"><button class="btn" id="tPlay">pause</button><button class="btn" id="tStep">step</button><button class="btn" id="tReset">reset</button></div>
+      <p class="note">Left is evicted first. Sessions run in a circle, so the session that ran longest ago is the one coming up next, and it's sitting at the eviction end. If the pool is short even a little, each new prompt evicts the next session's prefix before that session gets back. Under round robin, LRU throws away the one prefix that's about to be needed.</p>
+      <p class="note"><b>This is a model, not a trace.</b> Pure LRU on 16-token blocks, one request at a time. vLLM runs 4 in flight and frees blocks tail-first. It still lands on every measured dot, which is why we think this is the mechanism. The measured side backs it up: zero preemptions at every budget, and at 4.5 GiB every resumed turn reused exactly 16 tokens, one shared block.</p>
+    </div>
+  </div>
+
+  <div class="card prov" id="prov"></div>
+</div>
+<script>
+const $=id=>document.getElementById(id);
+const C={red:[255,95,86],amber:[255,207,112],green:[63,212,122]};
+function mix(f){const[a,b,t]=f<.5?[C.red,C.amber,f/.5]:[C.amber,C.green,(f-.5)/.5];return a.map((x,i)=>Math.round(x+(b[i]-x)*t))}
+const rgb=(c,a=1)=>`rgba(${c[0]},${c[1]},${c[2]},${a})`;
+const hue=s=>`hsl(${(s*22.5+200)%360} 62% 62%)`;
+const fmt=n=>n.toLocaleString('en-US');
+// Size a canvas to its CSS width every frame; never trust a zero-width layout.
+function fit(c){const r=devicePixelRatio||1,w=c.clientWidth,h=+(c.dataset.h||(c.dataset.h=c.getAttribute('height')));
+ if(c.width!==Math.round(w*r)||c.height!==Math.round(h*r)){c.width=Math.round(w*r);c.height=Math.round(h*r);c.style.height=h+'px'}
+ const x=c.getContext('2d');x.setTransform(r,0,0,r,0,0);return[x,w,h]}
+
+let D,WS,sel={gib:4.5,rep:1,arm:'C'},run,clock=0,speed=4,playing=true,last=null;
+fetch('data.json').then(r=>r.json()).then(d=>{D=d;WS=d.provenance.working_set_tokens;init()});
+
+function runsFor(gib,arm){return D.runs.filter(r=>r.gib===gib&&r.arm===arm&&(r.cohort==='main'||!D.runs.some(q=>q.gib===gib&&q.cohort==='main')))}
+function pick(){const rs=runsFor(sel.gib,sel.arm);run=rs.find(r=>r.rep===sel.rep)||rs[0];sel.rep=run.rep;clock=0;playing=true;$('play').textContent='pause';ui()}
+
+function seg(el,items,isOn,onClick){el.innerHTML='';items.forEach(it=>{const b=document.createElement('button');b.innerHTML=it.html;b.disabled=!!it.disabled;if(isOn(it))b.className='on';b.onclick=()=>onClick(it);el.appendChild(b)})}
+function ui(){
+ const gibs=[...new Set(D.runs.map(r=>r.gib))].sort((a,b)=>a-b);
+ seg($('budgets'),gibs.map(g=>({g,html:`${g} GiB<small>${D.runs.some(r=>r.gib===g&&r.cohort==='main')?'5 runs':'pilot'}</small>`})),it=>it.g===sel.gib,it=>{sel.gib=it.g;if(!runsFor(it.g,sel.arm).length)sel.arm='C';pick();syncToy()});
+ const rs=runsFor(sel.gib,sel.arm);
+ seg($('reps'),rs.map(r=>({r,html:`#${r.rep}`})),it=>it.r===run,it=>{sel.rep=it.r.rep;pick()});
+ seg($('arms'),[{a:'C',html:'on'},{a:'D',html:'off<small>control</small>',disabled:!runsFor(sel.gib,'D').length}],it=>it.a===sel.arm,it=>{sel.arm=it.a;pick()});
+ seg($('speeds'),[1,4,10].map(s=>({s,html:s+'×'})),it=>it.s===speed,it=>{speed=it.s;ui()});
+ const res=run.requests.filter(q=>q[1]>0);$('sTtft').textContent=Math.round(run.resumed_ttft_median_ms)+' ms';
+ $('sTtft').style.color=run.resumed_ttft_median_ms<200?'var(--green)':'var(--red)';
+ table();
+}
+$('play').onclick=()=>{if(clock>=run.wall_s*1000){clock=0;playing=true}else playing=!playing;$('play').textContent=playing?'pause':'play'};
+
+function drawGauge(){
+ const[x,w,h]=fit($('gauge')),max=80000,X=t=>14+t/max*(w-28),pool=run.kv_tokens,fits=pool>=WS;
+ const y=20;x.clearRect(0,0,w,h);x.fillStyle='#111722';x.beginPath();x.roundRect(X(0),y,X(max)-X(0),14,7);x.fill();
+ x.fillStyle=fits?'#3fd47a55':'#ff5f5655';x.beginPath();x.roundRect(X(0),y,X(pool)-X(0),14,7);x.fill();
+ x.strokeStyle=fits?'#3fd47a':'#ff5f56';x.lineWidth=1.5;x.beginPath();x.roundRect(X(0),y,X(pool)-X(0),14,7);x.stroke();
+ x.strokeStyle='#fff';x.setLineDash([3,3]);x.beginPath();x.moveTo(X(WS),y-6);x.lineTo(X(WS),y+20);x.stroke();x.setLineDash([]);
+ x.font='11px '+getComputedStyle(document.body).getPropertyValue('--mono');
+ x.fillStyle='#fff';x.textAlign=X(WS)>w-120?'right':'center';x.fillText(`all 16 prefixes: ${fmt(WS)}`,X(WS)>w-120?X(max):X(WS),y-9);
+ x.fillStyle=fits?'#3fd47a':'#ff5f56';x.textAlign='left';x.fillText(`pool ${fmt(pool)} tokens · `+(fits?'everything fits':`${Math.round(pool/WS*100)}% fits`),X(0)+2,h-3);
+}
+
+function drawLanes(){
+ const[x,w,h]=fit($('lanes')),m={l:34,r:10,t:6,b:22},T=82000,W=w-m.l-m.r,rh=(h-m.t-m.b)/16,X=t=>m.l+t/T*W,mono=getComputedStyle(document.body).getPropertyValue('--mono');
+ x.clearRect(0,0,w,h);x.font='10px '+mono;
+ for(let s=0;s<16;s++){const y=m.t+s*rh;x.fillStyle=s%2?'#0f141c':'#0d1117';x.fillRect(m.l,y,W,rh);x.fillStyle='#5b6573';x.textAlign='right';x.fillText('s'+s,m.l-6,y+rh/2+3)}
+ x.textAlign='center';for(let t=0;t<=80;t+=10){x.fillStyle='#5b6573';x.fillText(t+' s',X(t*1000),h-6);x.fillStyle='#1c2430';x.fillRect(X(t*1000),m.t,1,16*rh)}
+ let done=0,hit=0,tot=0;
+ for(const q of run.requests){const[s,turn,st,en,ttft,p,c]=q;if(st>clock)continue;const y=m.t+s*rh+rh*.18,bh=rh*.64,e=Math.min(en,clock),pe=Math.min(st+ttft,e);
+  const col=turn===0?[110,126,150]:mix(c/p);
+  x.fillStyle=rgb(col,1);x.fillRect(X(st),y,Math.max(1,X(pe)-X(st)),bh);
+  if(e>pe){x.fillStyle=rgb(col,.35);x.fillRect(X(pe),y,X(e)-X(pe),bh)}
+  if(en<=clock){done++;if(turn>0){hit+=c;tot+=p}}}
+ const wall=run.wall_s*1000;
+ if(clock>=wall){x.strokeStyle='#fff';x.setLineDash([4,4]);x.beginPath();x.moveTo(X(wall),m.t);x.lineTo(X(wall),m.t+16*rh);x.stroke();x.setLineDash([]);
+  x.fillStyle='#fff';x.textAlign=X(wall)>w-90?'right':'left';x.font='600 12px '+mono;x.fillText(`done ${run.wall_s.toFixed(1)} s`,X(wall)+(X(wall)>w-90?-6:6),m.t+12)}
+ else{x.fillStyle='#ffffffcc';x.fillRect(X(clock),m.t,1.5,16*rh)}
+ $('sClock').textContent=(Math.min(clock,wall)/1000).toFixed(1)+' s';$('sDone').textContent=done+'/192';
+ const f=tot?hit/tot:null;$('sReuse').textContent=f===null?'–':(f*100).toFixed(1)+'%';$('sReuse').style.color=f===null?'':rgb(mix(f));
+}
+
+function drawCliff(){
+ const[x,w,h]=fit($('cliff')),m={l:40,r:12,t:12,b:34},W=w-m.l-m.r,H=h-m.t-m.b,max=80000,X=t=>m.l+t/max*W,Y=f=>m.t+H-f*H,mono=getComputedStyle(document.body).getPropertyValue('--mono');
+ x.clearRect(0,0,w,h);x.font='10px '+mono;x.fillStyle='#5b6573';
+ x.textAlign='right';[0,.5,1].forEach(f=>{x.fillText(f*100+'%',m.l-6,Y(f)+3);x.fillStyle='#1c2430';x.fillRect(m.l,Y(f),W,1);x.fillStyle='#5b6573'});
+ x.textAlign='center';[0,20000,40000,60000,80000].forEach(t=>x.fillText(t/1000+'K',X(t),h-18));x.fillText('KV pool (tokens)',m.l+W/2,h-4);
+ x.fillStyle='#ffffff10';x.fillRect(X(43680),m.t,X(58240)-X(43680),H);
+ x.strokeStyle='#ffffff99';x.setLineDash([3,3]);x.beginPath();x.moveTo(X(WS),m.t);x.lineTo(X(WS),m.t+H);x.stroke();
+ x.fillStyle='#e6edf3';x.textAlign='right';x.fillText('all 16 prefixes',X(WS)-5,m.t+H*.5);x.fillText(fmt(WS)+' tok',X(WS)-5,m.t+H*.5+13);
+ x.strokeStyle='#7aa2ff';x.lineWidth=1.6;x.setLineDash([5,4]);x.beginPath();D.toy_lru.forEach(([c,f],i)=>x[i?'lineTo':'moveTo'](X(c),Y(f)));x.stroke();x.setLineDash([]);
+ x.fillStyle='#7aa2ff';x.textAlign='left';x.fillText('toy LRU',X(62000),Y(.9));
+ const pts={};D.runs.filter(r=>r.arm==='C').forEach(r=>{const k=r.gib+r.cohort;(pts[k]=pts[k]||{r,fs:[]}).fs.push(r.resumed_cached_frac_median)});
+ Object.values(pts).forEach(({r,fs})=>{const f=fs.sort()[fs.length>>1],px=X(r.kv_tokens),py=Y(f);x.beginPath();x.arc(px,py,r.cohort==='main'?5.5:4.5,0,7);
+  if(r.cohort==='main'){x.fillStyle=rgb(mix(f));x.fill()}else{x.strokeStyle=rgb(mix(f));x.lineWidth=2;x.stroke()}});
+ const px=X(run.kv_tokens),py=Y(run.arm==='C'?run.resumed_cached_frac_median:0),pulse=Math.max(0,9+2*Math.sin(performance.now()/220));
+ x.strokeStyle='#fff';x.lineWidth=2;x.beginPath();x.arc(px,py,pulse,0,7);x.stroke();
+}
+function table(){
+ const rows=[...new Set(D.runs.map(r=>r.gib))].sort((a,b)=>a-b).map(g=>{const rs=D.runs.filter(r=>r.gib===g&&r.arm==='C'&&(r.cohort==='main'||!D.runs.some(q=>q.gib===g&&q.cohort==='main')));
+  const md=a=>{a=a.slice().sort((p,q)=>p-q);return a[a.length>>1]};
+  return `<tr class="${g===sel.gib?'sel':''}"><td>${g} GiB</td><td>${fmt(rs[0].kv_tokens)}</td><td>${(md(rs.map(r=>r.resumed_cached_frac_median))*100).toFixed(1)}%</td><td>${Math.round(md(rs.map(r=>r.resumed_ttft_median_ms)))} ms</td><td>${md(rs.map(r=>r.wall_s)).toFixed(1)} s</td><td>${rs.length}</td></tr>`});
+ $('tbl').innerHTML='<tr><th>budget</th><th>pool tok</th><th>reused</th><th>TTFT</th><th>wall</th><th>runs</th></tr>'+rows.join('');
+}
+
+// toy LRU: pure LRU on 16-token blocks, the reference run's request order, one request at a time
+let toy,ORDER;
+function toyReset(){toy={lru:new Map(),i:0,hit:0,tot:0,ev:null,acc:0,playing:toy?toy.playing:true}}
+function toyStep(){
+ const cap=Math.floor(+$('cap').value/16);if(toy.i>=ORDER.length)toyReset();
+ const[s,turn,p]=ORDER[toy.i++],keys=['x0'];for(let i=1;i<Math.floor(p/16);i++)keys.push(s+'_'+i);
+ let h=0;for(const k of keys){if(toy.lru.has(k))h++;else break}
+ const lost={};for(const k of keys){if(toy.lru.has(k))toy.lru.delete(k);toy.lru.set(k,s);
+  while(toy.lru.size>cap){const[ok,os]=toy.lru.entries().next().value;toy.lru.delete(ok);if(ok!=='x0')lost[os]=(lost[os]||0)+16}}
+ if(turn>0){toy.hit+=h*16;toy.tot+=p}
+ const nx=ORDER[toy.i]?ORDER[toy.i][0]:null,victim=Object.entries(lost).sort((a,b)=>b[1]-a[1])[0];
+ toy.ev={s,turn,p,h:h*16,victim,nx};
+}
+function drawToy(){
+ const[x,w,h]=fit($('lru')),max=80000,cap=+$('cap').value,m=10,W=w-2*m,X=t=>m+t/max*W,y0=34,bh=46,mono=getComputedStyle(document.body).getPropertyValue('--mono');
+ x.clearRect(0,0,w,h);x.font='10px '+mono;
+ x.fillStyle='#111722';x.beginPath();x.roundRect(X(0),y0,X(cap)-X(0),bh,6);x.fill();
+ let pos=0,cur=null,start=0;const segs=[];
+ for(const s of toy.lru.values()){if(s!==cur){if(cur!==null)segs.push([cur,start,pos]);cur=s;start=pos}pos+=16}if(cur!==null)segs.push([cur,start,pos]);
+ const nx=toy.ev?toy.ev.nx:0;
+ segs.forEach(([s,a,b])=>{x.fillStyle=hue(s);x.globalAlpha=s===nx?1:.55;x.fillRect(X(a),y0+3,Math.max(1,X(b)-X(a)-1),bh-6);x.globalAlpha=1;
+  if(X(b)-X(a)>22){x.fillStyle='#0b0f16';x.textAlign='center';x.fillText('s'+s,(X(a)+X(b))/2,y0+bh/2+3)}});
+ x.strokeStyle='#e6edf3';x.lineWidth=1.5;x.beginPath();x.roundRect(X(0),y0,X(cap)-X(0),bh,6);x.stroke();
+ x.strokeStyle='#ffffff88';x.setLineDash([3,3]);x.beginPath();x.moveTo(X(WS),y0-8);x.lineTo(X(WS),y0+bh+8);x.stroke();x.setLineDash([]);
+ x.fillStyle='#8b949e';x.textAlign='left';x.fillText('← evicted first',X(0),y0-10);x.textAlign='right';
+ const need=X(0)+x.measureText('← evicted first').width+x.measureText('most recent →').width+14;x.fillText('most recent →',Math.min(Math.max(X(cap),need),w-m),y0-10);
+ x.textAlign='center';x.fillStyle='#e6edf3';x.fillText('all 16 prefixes',Math.min(Math.max(X(WS),50),w-50),y0+bh+22);
+ if(toy.ev&&nx!==null){const sg=segs.find(g=>g[0]===nx);x.fillStyle=hue(nx);x.textAlign='left';x.fillText(sg?`▲ s${nx} is up next`:`s${nx} is up next: already evicted`,sg?X(sg[1]):X(0),y0+bh+38)}
+ const e=toy.ev;if(e){$('ev').innerHTML=`s${e.s} turn ${e.turn}: `+(e.turn===0?'cold start':e.h>16?`<span class="hit">reused ${fmt(e.h)} of ${fmt(e.p)} tokens</span>`:`<span class="miss">reused ${e.h} of ${fmt(e.p)}, recomputed the rest</span>`)+(e.victim?` · evicted ${fmt(e.victim[1])} tokens of <b style="color:${hue(+e.victim[0])}">s${e.victim[0]}</b>`:'');
+  $('tNext').textContent=e.nx===null?'–':'s'+e.nx;$('tNext').style.color=e.nx===null?'':hue(e.nx)}
+ const f=toy.tot?toy.hit/toy.tot:null;$('tReuse').textContent=f===null?'–':(f*100).toFixed(1)+'%';$('tReuse').style.color=f===null?'':rgb(mix(f));
+ $('capV').textContent=fmt(cap)+' tokens';
+}
+function syncToy(){$('cap').value=run.kv_tokens;toyReset()}
+$('cap').oninput=()=>toyReset();
+$('tPlay').onclick=()=>{toy.playing=!toy.playing;$('tPlay').textContent=toy.playing?'pause':'play'};
+$('tStep').onclick=()=>{toy.playing=false;$('tPlay').textContent='play';toyStep()};
+$('tReset').onclick=()=>toyReset();
+
+function prov(){const p=D.provenance;$('prov').innerHTML=`<b>Provenance.</b> ${p.gpu}, driver ${p.driver}, ${p.engine}, ${p.model} @ ${p.model_revision.slice(0,8)}, BF16, max model length 8192, KV pool set with <code>--kv-cache-memory-bytes</code>, prefix caching on (arm C) or off (arm D, control). Workload: ${p.workload}. Prefixes = sum of each session's largest prompt (${fmt(p.working_set_tokens)} tokens). Pool size is vLLM's own reported "GPU KV cache size". Main cohort: 4.5 and 10 GiB, 5 repetitions each, fresh server per run, zero preemptions. Pilot: 2.5, 3, 6 and 8 GiB, 1 run each. Replay times are each request's real start/end relative to the measured start; TTFT shown is time to first token measured by the client. Data built from <code>${p.source}</code> at <code>${p.git}</code> by <code>scripts/build_kv_cliff_demo.py</code>. One model, one GPU, one synthetic workload: a finding about this setup, not a claim about every deployment. <a href="https://github.com/dundysm/inference-under-pressure">github.com/dundysm/inference-under-pressure</a></p>`}
+
+function init(){
+ const ref=D.runs.find(r=>r.cohort==='main'&&r.arm==='C'&&r.gib===4.5&&r.rep===1);ORDER=ref.requests.map(q=>[q[0],q[1],q[5]]);
+ pick();syncToy();prov();requestAnimationFrame(loop);
+}
+function loop(t){
+ requestAnimationFrame(loop);
+ const dt=last===null?0:Math.min(100,t-last);last=t;
+ if(playing){clock+=dt*speed;if(clock>=run.wall_s*1000){clock=run.wall_s*1000;playing=false;$('play').textContent='replay'}}
+ if(toy.playing){toy.acc+=dt;while(toy.acc>260){toy.acc-=260;toyStep()}}
+ try{drawGauge();drawLanes();drawCliff();drawToy()}catch(e){console.error(e)}
+}
+</script>
+</body>
+</html>
